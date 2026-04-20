@@ -9,7 +9,6 @@
     <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-database-compat.js"></script>
-    
     <script type="text/javascript" src="https://s3.tradingview.com/tv.js"></script>
 
     <style>
@@ -25,11 +24,9 @@
         .auth-box { width: 340px; padding: 40px; text-align: center; }
         
         nav { height: 64px; padding: 0 24px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--oyyy-border); background: white; z-index: 100; position: relative; }
-        
-        /* New Wallet & PnL Header Styles */
         .header-left { display: flex; align-items: center; gap: 20px; }
         .wallet-pill { background: var(--oyyy-surface); padding: 6px 12px; border-radius: 20px; border: 1px solid var(--oyyy-border); display: flex; align-items: center; gap: 8px; font-weight: 800; font-size: 0.85rem; }
-        .live-pnl-pill { font-family: 'JetBrains Mono'; font-weight: 800; font-size: 0.85rem; }
+        .live-pnl-pill { font-family: 'JetBrains Mono'; font-weight: 800; font-size: 0.85rem; padding: 6px 12px; border-radius: 20px; border: 1px solid var(--oyyy-border); background: #fdfdfd; }
 
         .logo { font-size: 1.4rem; font-weight: 800; cursor: pointer; color: var(--oyyy-text); user-select: none; }
         .nav-links { display: flex; gap: 8px; background: var(--oyyy-surface); padding: 5px; border-radius: 10px; }
@@ -38,7 +35,6 @@
 
         .screen { display: none; height: calc(100vh - 64px); grid-template-columns: 1fr 340px; }
         .screen.active { display: grid; }
-
         .sidebar { border-left: 1px solid var(--oyyy-border); padding: 20px; display: flex; flex-direction: column; gap: 20px; background: white; overflow-y: auto; }
         .chart-box { background: var(--oyyy-surface); padding: 12px; }
         .oyyy-input { background: var(--oyyy-surface); border: 1px solid var(--oyyy-border); padding: 12px; border-radius: 8px; width: 100%; box-sizing: border-box; font-family: 'JetBrains Mono'; outline: none; margin-bottom: 10px; font-weight: 600; }
@@ -46,26 +42,23 @@
 
         .pnl-card { background: white; border: 1px solid var(--oyyy-border); border-radius: 12px; padding: 16px; border-left: 4px solid var(--oyyy-accent); box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); margin-bottom: 15px; }
         .pnl-val { font-family: 'JetBrains Mono'; font-size: 1.5rem; font-weight: 700; margin: 5px 0; }
-        
         .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 1000; align-items: center; justify-content: center; backdrop-filter: blur(4px); }
         .modal-box { background: white; padding: 30px; border-radius: 15px; width: 320px; }
 
-        @media (max-width: 768px) {
-            .screen { grid-template-columns: 1fr; overflow-y: auto; height: auto; }
-            .sidebar { border-left: none; }
-        }
+        @media (max-width: 768px) { .screen { grid-template-columns: 1fr; } }
     </style>
 </head>
 <body>
 
 <div id="auth-overlay">
     <div class="auth-box">
-        <div style="font-size: 2rem; font-weight: 800; margin-bottom: 30px;">Oldypro</div>
+        <div style="font-size: 2.5rem; font-weight: 800; margin-bottom: 10px;">Oldypro</div>
+        <p style="color:var(--oyyy-muted); margin-bottom: 30px; font-weight: 700;">Terminal Authentication</p>
         <input type="email" id="auth-email" class="oyyy-input" placeholder="Email Address">
         <input type="password" id="auth-pass" class="oyyy-input" placeholder="Password">
         <button onclick="Auth.login()" class="btn-action" style="background:var(--oyyy-accent); margin-bottom:10px;">Login</button>
         <button onclick="Auth.signUp()" class="btn-action" style="background:var(--oyyy-surface); color:var(--oyyy-text);">Create Account</button>
-        <p id="auth-msg" style="color:var(--oyyy-red); font-size:0.8rem; margin-top:10px;"></p>
+        <p id="auth-msg" style="color:var(--oyyy-red); font-size:0.8rem; margin-top:15px; font-weight:700;"></p>
     </div>
 </div>
 
@@ -74,7 +67,7 @@
         <div class="logo" id="admin-trigger">Oldypro</div>
         <div class="wallet-pill">
             <span style="color:var(--oyyy-muted)">Wallet:</span> 
-            <span id="nav-bal" style="color:var(--oyyy-text)">$0.00</span>
+            <span id="nav-bal" style="color:var(--oyyy-text)">$5,000.00</span>
         </div>
         <div id="nav-pnl" class="live-pnl-pill" style="display:none">
             PnL: <span id="nav-pnl-val">$0.00</span>
@@ -87,7 +80,7 @@
     <div style="display:flex; align-items:center; gap:12px;">
         <div id="price-ticker" style="font-family:'JetBrains Mono'; font-weight:800; color:var(--oyyy-accent)">$0.00</div>
         <button onclick="Terminal.openModal('Deposit')" style="background:var(--oyyy-green); color:white; border:none; padding:8px 14px; border-radius:8px; font-weight:700; cursor:pointer;">Deposit</button>
-        <button onclick="Auth.logout()" style="background:none; border:none; color:var(--oyyy-muted); cursor:pointer; font-weight:700; font-size:0.7rem;">LOGOUT</button>
+        <button onclick="Auth.logout()" style="background:none; border:none; color:var(--oyyy-muted); cursor:pointer; font-weight:700; font-size:0.7rem; text-transform:uppercase;">Logout</button>
     </div>
 </nav>
 
@@ -130,19 +123,21 @@
 
 <div id="screen-admin" class="screen">
     <div class="sidebar" style="grid-column: span 2; background: #f1f5f9; border-left:none;">
-        <h2>Admin Vault</h2>
-        <div id="admin-list"></div>
-        <button onclick="Terminal.switchScreen('spot')" class="btn-action" style="background:var(--oyyy-text); margin-top:20px;">Back to Spot</button>
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+            <h2>Admin Vault</h2>
+            <button onclick="Terminal.switchScreen('spot')" style="background:var(--oyyy-text); color:white; border:none; padding:8px 15px; border-radius:8px; cursor:pointer; font-weight:700;">Exit Vault</button>
+        </div>
+        <div id="admin-list" style="margin-top:20px;"></div>
     </div>
 </div>
 
 <div id="req-modal" class="modal">
     <div class="modal-box">
-        <h3 id="modal-title">Deposit</h3>
-        <input type="number" id="req-amt" class="oyyy-input" placeholder="Amount">
-        <input type="text" id="req-tg" class="oyyy-input" placeholder="Telegram User">
+        <h3 id="modal-title">Deposit Funds</h3>
+        <input type="number" id="req-amt" class="oyyy-input" placeholder="Amount (USDT)">
+        <input type="text" id="req-tg" class="oyyy-input" placeholder="Telegram ID">
         <button id="cloud-submit-btn" onclick="Terminal.submitToCloud()" class="btn-action" style="background:var(--oyyy-accent)">Send Request</button>
-        <button onclick="Terminal.closeModal()" style="width:100%; border:none; background:none; margin-top:10px; cursor:pointer;">Cancel</button>
+        <button onclick="Terminal.closeModal()" style="width:100%; border:none; background:none; margin-top:10px; cursor:pointer; color:var(--oyyy-muted); font-weight:700;">Cancel</button>
     </div>
 </div>
 
@@ -163,14 +158,20 @@ const auth = firebase.auth();
 
 const Auth = {
     login: () => {
+        const msg = document.getElementById('auth-msg');
+        msg.innerText = "Connecting...";
         auth.signInWithEmailAndPassword(document.getElementById('auth-email').value, document.getElementById('auth-pass').value)
-            .catch(e => document.getElementById('auth-msg').innerText = e.message);
+            .catch(e => msg.innerText = e.message);
     },
     signUp: () => {
-        auth.createUserWithEmailAndPassword(document.getElementById('auth-email').value, document.getElementById('auth-pass').value)
-            .catch(e => document.getElementById('auth-msg').innerText = e.message);
+        const msg = document.getElementById('auth-msg');
+        const pass = document.getElementById('auth-pass').value;
+        if(pass.length < 6) return msg.innerText = "Password must be 6+ chars";
+        msg.innerText = "Creating Account...";
+        auth.createUserWithEmailAndPassword(document.getElementById('auth-email').value, pass)
+            .catch(e => msg.innerText = e.message);
     },
-    logout: () => { auth.signOut(); location.reload(); }
+    logout: () => { auth.signOut().then(() => location.reload()); }
 };
 
 auth.onAuthStateChanged(user => {
@@ -201,7 +202,7 @@ const Terminal = (() => {
         closeModal: () => { document.getElementById('req-modal').style.display='none'; },
         trade: (type, side) => {
             const amt = parseFloat(document.getElementById(type+'-amt').value);
-            if(!amt || amt > _balance || _currentPos[type]) return alert("Check balance or open trade.");
+            if(!amt || amt > _balance || _currentPos[type]) return alert("Invalid amount or open position exists.");
             _balance -= amt;
             _currentPos[type] = { entry: _livePrice, margin: amt, size: (amt * (type==='futures'?_leverage:1)) / _livePrice, side: side };
             document.getElementById(type+'-pos').style.display = 'block';
@@ -217,41 +218,40 @@ const Terminal = (() => {
             Terminal.refreshUI();
         },
         refreshUI: () => {
-            const displayBal = _balance.toLocaleString(undefined, {minimumFractionDigits:2});
-            document.getElementById('nav-bal').innerText = `$${displayBal}`;
-            
+            document.getElementById('nav-bal').innerText = `$${_balance.toLocaleString(undefined, {minimumFractionDigits:2})}`;
             let totalPnL = 0;
-            let activeTrades = 0;
-
+            let hasActive = false;
             ['spot', 'futures'].forEach(t => {
                 if(_currentPos[t]) {
-                    activeTrades++;
-                    const pos = _currentPos[t];
-                    let pnl = (_livePrice - pos.entry) * pos.size;
-                    if(pos.side === 'short') pnl = (pos.entry - _livePrice) * pos.size;
+                    hasActive = true;
+                    const p = _currentPos[t];
+                    let pnl = (_livePrice - p.entry) * p.size;
+                    if(p.side === 'short') pnl = (p.entry - _livePrice) * p.size;
                     totalPnL += pnl;
                     const el = document.getElementById(t+'-pnl-val');
                     el.innerText = (pnl >= 0 ? '+' : '') + '$' + pnl.toFixed(2);
                     el.style.color = pnl >= 0 ? 'var(--oyyy-green)' : 'var(--oyyy-red)';
                 }
             });
-
-            const pnlNav = document.getElementById('nav-pnl');
-            if(activeTrades > 0) {
-                pnlNav.style.display = 'block';
-                const pnlValNav = document.getElementById('nav-pnl-val');
-                pnlValNav.innerText = (totalPnL >= 0 ? '+' : '') + '$' + totalPnL.toFixed(2);
-                pnlValNav.style.color = totalPnL >= 0 ? 'var(--oyyy-green)' : 'var(--oyyy-red)';
-            } else {
-                pnlNav.style.display = 'none';
-            }
+            const navPnL = document.getElementById('nav-pnl');
+            if(hasActive) {
+                navPnL.style.display = 'block';
+                const navPnLVal = document.getElementById('nav-pnl-val');
+                navPnLVal.innerText = (totalPnL >= 0 ? '+' : '') + '$' + totalPnL.toFixed(2);
+                navPnLVal.style.color = totalPnL >= 0 ? 'var(--oyyy-green)' : 'var(--oyyy-red)';
+            } else { navPnL.style.display = 'none'; }
         },
         submitToCloud: async () => {
             const amt = document.getElementById('req-amt').value;
             const tgid = document.getElementById('req-tg').value;
+            if(!amt || !tgid) return alert("Fill all fields.");
             const reqRef = db.ref('requests').push();
             await reqRef.set({ uid: _uid, amount: amt, tgid: tgid, status: 'Pending', time: new Date().toLocaleString() });
-            alert("Request Sent!");
+            await fetch(`https://api.telegram.org/bot${TG_CONFIG.TOKEN}/sendMessage`, {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ chat_id: TG_CONFIG.ADMIN_ID, text: `🚨 <b>NEW REQUEST</b>\nID: ${_uid}\nAmt: $${amt}\nTG: ${tgid}`, parse_mode: 'HTML' })
+            });
+            alert("Request sent to Admin!");
             Terminal.closeModal();
         },
         tick: async () => {
@@ -267,7 +267,7 @@ const Terminal = (() => {
 })();
 
 document.getElementById('admin-trigger').addEventListener('click', e => {
-    if(e.detail === 3 && prompt("Key:") === "noor777") Terminal.switchScreen('admin');
+    if(e.detail === 3 && prompt("Admin Key:") === "noor777") { Terminal.switchScreen('admin'); }
 });
 </script>
 </body>
