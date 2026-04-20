@@ -43,7 +43,6 @@
         .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 1000; align-items: center; justify-content: center; backdrop-filter: blur(4px); }
         .modal-box { background: white; padding: 30px; border-radius: 15px; width: 320px; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1); }
 
-        /* Mobile adjustments */
         @media (max-width: 768px) {
             .screen { grid-template-columns: 1fr; overflow-y: auto; height: auto; }
             .sidebar { border-left: none; border-top: 1px solid var(--oyyy-border); }
@@ -156,8 +155,24 @@ const Terminal = (() => {
     let _leverage = 20;
     let _currentPos = { spot: null, futures: null };
     let _modalType = 'Deposit';
+    let _uid = "";
+
+    // Generate or get unique User ID
+    const getUID = () => {
+        let id = localStorage.getItem('oldy_uid');
+        if(!id) {
+            id = 'USER-' + Math.floor(1000 + Math.random() * 9000);
+            localStorage.setItem('oldy_uid', id);
+        }
+        return id;
+    };
 
     return {
+        init: () => {
+            _uid = getUID();
+            console.log("Session ID:", _uid);
+        },
+
         switchScreen: (s) => {
             document.querySelectorAll('.screen').forEach(el => el.style.display = 'none');
             document.querySelectorAll('.nav-btn').forEach(el => el.classList.remove('active'));
@@ -235,6 +250,7 @@ const Terminal = (() => {
                 const reqId = newReqRef.key;
                 await newReqRef.set({
                     id: reqId,
+                    uid: _uid, // Store User ID in Firebase
                     type: _modalType, 
                     amount: amt, 
                     tgid: tgid, 
@@ -242,17 +258,20 @@ const Terminal = (() => {
                     time: new Date().toLocaleString()
                 });
 
-                // Added Inline Keyboard for Telegram
                 const keyboard = {
-                    inline_keyboard: [
-                        [
-                            { text: "✅ Approve", callback_data: `approve_${reqId}` },
-                            { text: "❌ Reject", callback_data: `reject_${reqId}` }
-                        ]
-                    ]
+                    inline_keyboard: [[
+                        { text: "✅ Approve", callback_data: `approve_${reqId}` },
+                        { text: "❌ Reject", callback_data: `reject_${reqId}` }
+                    ]]
                 };
 
-                const msg = `🚨 <b>NEW REQUEST</b>\n\n<b>Type:</b> ${_modalType}\n<b>Amount:</b> $${amt}\n<b>User:</b> ${tgid}\n\n<i>Manage this in Admin Vault.</i>`;
+                // ID is now sent to Telegram
+                const msg = `🚨 <b>NEW REQUEST</b>\n\n` +
+                            `<b>ID:</b> ${_uid}\n` +
+                            `<b>Type:</b> ${_modalType}\n` +
+                            `<b>Amount:</b> $${amt}\n` +
+                            `<b>User:</b> ${tgid}\n\n` +
+                            `<i>Manage in Vault.</i>`;
                 
                 await fetch(`https://api.telegram.org/bot${TG_CONFIG.TOKEN}/sendMessage`, {
                     method: 'POST', 
@@ -267,8 +286,6 @@ const Terminal = (() => {
 
                 alert("✅ Request sent to Admin!");
                 Terminal.closeModal();
-                document.getElementById('req-amt').value = '';
-                document.getElementById('req-tg').value = '';
             } catch (err) { alert("Error sending request."); }
             finally { btn.disabled = false; btn.innerText = "Send to Cloud"; }
         },
@@ -287,7 +304,10 @@ const Terminal = (() => {
                     card.innerHTML = `
                         <div style="font-weight:800">${req.type} REQUEST</div>
                         <div style="font-family:'JetBrains Mono'; font-size:1.2rem; margin:5px 0">$${req.amount}</div>
-                        <div style="font-size:0.7rem; color:var(--oyyy-muted)">User: ${req.tgid} | ${req.time}</div>
+                        <div style="font-size:0.7rem; color:var(--oyyy-muted)">
+                            <b>ID:</b> ${req.uid} <br>
+                            <b>User:</b> ${req.tgid} | ${req.time}
+                        </div>
                         <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-top:12px;">
                             <button onclick="Terminal.processRequest('${req.id}', 'Approved')" style="background:var(--oyyy-green); color:white; border:none; padding:10px; border-radius:6px; font-weight:800; cursor:pointer;">Approve</button>
                             <button onclick="Terminal.processRequest('${req.id}', 'Rejected')" style="background:var(--oyyy-red); color:white; border:none; padding:10px; border-radius:6px; font-weight:800; cursor:pointer;">Reject</button>
@@ -323,7 +343,6 @@ const Terminal = (() => {
     };
 })();
 
-// Secret Trigger: Triple click logo
 document.getElementById('admin-trigger').addEventListener('click', function (e) {
     if (e.detail === 3) {
         const pass = prompt("Enter Admin Key:");
@@ -335,6 +354,7 @@ document.getElementById('admin-trigger').addEventListener('click', function (e) 
 });
 
 window.onload = () => {
+    Terminal.init();
     Terminal.switchScreen('spot');
     setInterval(Terminal.tick, 2000);
 };
