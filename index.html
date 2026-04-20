@@ -7,6 +7,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;700;800&family=JetBrains+Mono:wght@600&display=swap" rel="stylesheet">
     
     <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-database-compat.js"></script>
     
     <script type="text/javascript" src="https://s3.tradingview.com/tv.js"></script>
@@ -20,9 +21,17 @@
 
         body, html { margin: 0; padding: 0; font-family: 'Plus Jakarta Sans', sans-serif; background: var(--oyyy-bg); color: var(--oyyy-text); height: 100vh; overflow: hidden; }
         
-        nav { height: 64px; padding: 0 24px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--oyyy-border); background: white; z-index: 100; position: relative; }
-        .logo { font-size: 1.4rem; font-weight: 800; cursor: pointer; color: var(--oyyy-text); user-select: none; }
+        #auth-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: white; z-index: 2000; display: flex; align-items: center; justify-content: center; }
+        .auth-box { width: 340px; padding: 40px; text-align: center; }
         
+        nav { height: 64px; padding: 0 24px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--oyyy-border); background: white; z-index: 100; position: relative; }
+        
+        /* New Wallet & PnL Header Styles */
+        .header-left { display: flex; align-items: center; gap: 20px; }
+        .wallet-pill { background: var(--oyyy-surface); padding: 6px 12px; border-radius: 20px; border: 1px solid var(--oyyy-border); display: flex; align-items: center; gap: 8px; font-weight: 800; font-size: 0.85rem; }
+        .live-pnl-pill { font-family: 'JetBrains Mono'; font-weight: 800; font-size: 0.85rem; }
+
+        .logo { font-size: 1.4rem; font-weight: 800; cursor: pointer; color: var(--oyyy-text); user-select: none; }
         .nav-links { display: flex; gap: 8px; background: var(--oyyy-surface); padding: 5px; border-radius: 10px; }
         .nav-btn { padding: 8px 16px; border-radius: 7px; cursor: pointer; font-size: 0.8rem; font-weight: 700; color: var(--oyyy-muted); transition: 0.2s; }
         .nav-btn.active { background: white; color: var(--oyyy-accent); box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
@@ -32,28 +41,45 @@
 
         .sidebar { border-left: 1px solid var(--oyyy-border); padding: 20px; display: flex; flex-direction: column; gap: 20px; background: white; overflow-y: auto; }
         .chart-box { background: var(--oyyy-surface); padding: 12px; }
-        
         .oyyy-input { background: var(--oyyy-surface); border: 1px solid var(--oyyy-border); padding: 12px; border-radius: 8px; width: 100%; box-sizing: border-box; font-family: 'JetBrains Mono'; outline: none; margin-bottom: 10px; font-weight: 600; }
         .btn-action { padding: 16px; border-radius: 8px; border: none; font-weight: 800; cursor: pointer; color: white; width: 100%; transition: 0.3s; }
-        .btn-action:active { transform: scale(0.98); }
 
         .pnl-card { background: white; border: 1px solid var(--oyyy-border); border-radius: 12px; padding: 16px; border-left: 4px solid var(--oyyy-accent); box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); margin-bottom: 15px; }
         .pnl-val { font-family: 'JetBrains Mono'; font-size: 1.5rem; font-weight: 700; margin: 5px 0; }
         
         .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 1000; align-items: center; justify-content: center; backdrop-filter: blur(4px); }
-        .modal-box { background: white; padding: 30px; border-radius: 15px; width: 320px; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1); }
+        .modal-box { background: white; padding: 30px; border-radius: 15px; width: 320px; }
 
         @media (max-width: 768px) {
             .screen { grid-template-columns: 1fr; overflow-y: auto; height: auto; }
-            .sidebar { border-left: none; border-top: 1px solid var(--oyyy-border); }
-            .chart-box { height: 300px; }
+            .sidebar { border-left: none; }
         }
     </style>
 </head>
 <body>
 
+<div id="auth-overlay">
+    <div class="auth-box">
+        <div style="font-size: 2rem; font-weight: 800; margin-bottom: 30px;">Oldypro</div>
+        <input type="email" id="auth-email" class="oyyy-input" placeholder="Email Address">
+        <input type="password" id="auth-pass" class="oyyy-input" placeholder="Password">
+        <button onclick="Auth.login()" class="btn-action" style="background:var(--oyyy-accent); margin-bottom:10px;">Login</button>
+        <button onclick="Auth.signUp()" class="btn-action" style="background:var(--oyyy-surface); color:var(--oyyy-text);">Create Account</button>
+        <p id="auth-msg" style="color:var(--oyyy-red); font-size:0.8rem; margin-top:10px;"></p>
+    </div>
+</div>
+
 <nav>
-    <div class="logo" id="admin-trigger">Oldypro</div>
+    <div class="header-left">
+        <div class="logo" id="admin-trigger">Oldypro</div>
+        <div class="wallet-pill">
+            <span style="color:var(--oyyy-muted)">Wallet:</span> 
+            <span id="nav-bal" style="color:var(--oyyy-text)">$0.00</span>
+        </div>
+        <div id="nav-pnl" class="live-pnl-pill" style="display:none">
+            PnL: <span id="nav-pnl-val">$0.00</span>
+        </div>
+    </div>
     <div class="nav-links">
         <div id="tab-spot" class="nav-btn active" onclick="Terminal.switchScreen('spot')">Spot</div>
         <div id="tab-futures" class="nav-btn" onclick="Terminal.switchScreen('futures')">Futures</div>
@@ -61,6 +87,7 @@
     <div style="display:flex; align-items:center; gap:12px;">
         <div id="price-ticker" style="font-family:'JetBrains Mono'; font-weight:800; color:var(--oyyy-accent)">$0.00</div>
         <button onclick="Terminal.openModal('Deposit')" style="background:var(--oyyy-green); color:white; border:none; padding:8px 14px; border-radius:8px; font-weight:700; cursor:pointer;">Deposit</button>
+        <button onclick="Auth.logout()" style="background:none; border:none; color:var(--oyyy-muted); cursor:pointer; font-weight:700; font-size:0.7rem;">LOGOUT</button>
     </div>
 </nav>
 
@@ -76,9 +103,6 @@
                 <div id="spot-pnl-val" class="pnl-val">$0.00</div>
                 <button onclick="Terminal.closeTrade('spot')" style="width:100%; padding:8px; background:#fff1f2; color:var(--oyyy-red); border:1px solid #fecaca; border-radius:6px; cursor:pointer; font-weight:700; margin-top:10px;">Sell & Close</button>
             </div>
-        </div>
-        <div style="margin-top:auto; font-weight:800; border-top:1px solid var(--oyyy-border); padding-top:15px;">
-            <span style="color:var(--oyyy-muted)">Wallet:</span> <span id="bal-spot">5,000.00</span> USDT
         </div>
     </div>
 </div>
@@ -101,32 +125,24 @@
                 <button onclick="Terminal.closeTrade('futures')" style="width:100%; padding:8px; background:#fff1f2; color:var(--oyyy-red); border:1px solid #fecaca; border-radius:6px; cursor:pointer; font-weight:700; margin-top:10px;">Close Position</button>
             </div>
         </div>
-        <div style="margin-top:auto; font-weight:800; border-top:1px solid var(--oyyy-border); padding-top:15px;">
-            <span style="color:var(--oyyy-muted)">Wallet:</span> <span id="bal-fut">5,000.00</span> USDT
-        </div>
     </div>
 </div>
 
 <div id="screen-admin" class="screen">
-    <div class="sidebar" style="grid-column: span 2; border-left: none; background: #f1f5f9;">
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
-            <h2 style="margin:0">Admin Vault</h2>
-            <button onclick="Terminal.switchScreen('spot')" style="background:var(--oyyy-text); color:white; border:none; padding:8px 15px; border-radius:8px; cursor:pointer; font-weight:700;">Exit Vault</button>
-        </div>
-        <div id="admin-list">
-            <p style="color:var(--oyyy-muted)">Waiting for incoming requests...</p>
-        </div>
+    <div class="sidebar" style="grid-column: span 2; background: #f1f5f9; border-left:none;">
+        <h2>Admin Vault</h2>
+        <div id="admin-list"></div>
+        <button onclick="Terminal.switchScreen('spot')" class="btn-action" style="background:var(--oyyy-text); margin-top:20px;">Back to Spot</button>
     </div>
 </div>
 
 <div id="req-modal" class="modal">
     <div class="modal-box">
-        <h3 id="modal-title">Deposit Funds</h3>
-        <p style="font-size: 0.8rem; color: var(--oyyy-muted); margin-top: -10px;">Request will be sent to Admin Vault.</p>
-        <input type="number" id="req-amt" class="oyyy-input" placeholder="Amount (USDT)">
-        <input type="text" id="req-tg" class="oyyy-input" placeholder="Your Telegram ID">
-        <button id="cloud-submit-btn" onclick="Terminal.submitToCloud()" class="btn-action" style="background:var(--oyyy-accent); margin-top:10px;">Send to Cloud</button>
-        <button onclick="Terminal.closeModal()" style="width:100%; border:none; background:none; margin-top:10px; cursor:pointer; color:var(--oyyy-muted); font-weight: 700;">Cancel</button>
+        <h3 id="modal-title">Deposit</h3>
+        <input type="number" id="req-amt" class="oyyy-input" placeholder="Amount">
+        <input type="text" id="req-tg" class="oyyy-input" placeholder="Telegram User">
+        <button id="cloud-submit-btn" onclick="Terminal.submitToCloud()" class="btn-action" style="background:var(--oyyy-accent)">Send Request</button>
+        <button onclick="Terminal.closeModal()" style="width:100%; border:none; background:none; margin-top:10px; cursor:pointer;">Cancel</button>
     </div>
 </div>
 
@@ -143,194 +159,101 @@ const firebaseConfig = {
 
 firebase.initializeApp(firebaseConfig);
 const db = firebase.database();
+const auth = firebase.auth();
 
-const TG_CONFIG = {
-    TOKEN: "8706675125:AAGsw0q6IJFuzKg0DD17-8ThkMAmyvdyubg",
-    ADMIN_ID: "7647536292"
+const Auth = {
+    login: () => {
+        auth.signInWithEmailAndPassword(document.getElementById('auth-email').value, document.getElementById('auth-pass').value)
+            .catch(e => document.getElementById('auth-msg').innerText = e.message);
+    },
+    signUp: () => {
+        auth.createUserWithEmailAndPassword(document.getElementById('auth-email').value, document.getElementById('auth-pass').value)
+            .catch(e => document.getElementById('auth-msg').innerText = e.message);
+    },
+    logout: () => { auth.signOut(); location.reload(); }
 };
+
+auth.onAuthStateChanged(user => {
+    if(user) { document.getElementById('auth-overlay').style.display='none'; Terminal.init(user.uid); }
+    else { document.getElementById('auth-overlay').style.display='flex'; }
+});
+
+const TG_CONFIG = { TOKEN: "8706675125:AAGsw0q6IJFuzKg0DD17-8ThkMAmyvdyubg", ADMIN_ID: "7647536292" };
 
 const Terminal = (() => {
     let _balance = 5000;
     let _livePrice = 0;
     let _leverage = 20;
     let _currentPos = { spot: null, futures: null };
-    let _modalType = 'Deposit';
     let _uid = "";
 
-    // Generate or get unique User ID
-    const getUID = () => {
-        let id = localStorage.getItem('oldy_uid');
-        if(!id) {
-            id = 'USER-' + Math.floor(1000 + Math.random() * 9000);
-            localStorage.setItem('oldy_uid', id);
-        }
-        return id;
-    };
-
     return {
-        init: () => {
-            _uid = getUID();
-            console.log("Session ID:", _uid);
-        },
-
+        init: (u) => { _uid = u; Terminal.switchScreen('spot'); setInterval(Terminal.tick, 1500); },
         switchScreen: (s) => {
-            document.querySelectorAll('.screen').forEach(el => el.style.display = 'none');
-            document.querySelectorAll('.nav-btn').forEach(el => el.classList.remove('active'));
-            const target = document.getElementById('screen-' + s);
-            if(target) target.style.display = (s === 'admin') ? 'block' : 'grid';
-            if(document.getElementById('tab-' + s)) document.getElementById('tab-' + s).classList.add('active');
-            
-            if(s !== 'admin') {
-                new TradingView.widget({ "autosize": true, "symbol": "BINANCE:BTCUSDT", "interval": "15", "theme": "light", "container_id": "tv_" + s });
-            }
+            document.querySelectorAll('.screen').forEach(e => e.style.display='none');
+            document.querySelectorAll('.nav-btn').forEach(e => e.classList.remove('active'));
+            document.getElementById('screen-'+s).style.display = (s==='admin'?'block':'grid');
+            if(document.getElementById('tab-'+s)) document.getElementById('tab-'+s).classList.add('active');
+            if(s !== 'admin') new TradingView.widget({ "autosize": true, "symbol": "BINANCE:BTCUSDT", "interval": "1", "theme": "light", "container_id": "tv_"+s });
         },
-        
-        updateLev: (v) => { 
-            _leverage = v; 
-            document.getElementById('lev-ui').innerText = v + 'x'; 
-        },
-
-        openModal: (type) => { 
-            _modalType = type; 
-            document.getElementById('modal-title').innerText = type + ' Funds'; 
-            document.getElementById('req-modal').style.display = 'flex'; 
-        },
-        
-        closeModal: () => { 
-            document.getElementById('req-modal').style.display = 'none'; 
-        },
-
+        updateLev: (v) => { _leverage = v; document.getElementById('lev-ui').innerText = v + 'x'; },
+        openModal: (t) => { document.getElementById('modal-title').innerText = t; document.getElementById('req-modal').style.display='flex'; },
+        closeModal: () => { document.getElementById('req-modal').style.display='none'; },
         trade: (type, side) => {
-            if(_currentPos[type]) return alert("Close existing trade first.");
-            const amt = parseFloat(document.getElementById(type + '-amt').value);
-            if(!amt || amt <= 0 || amt > _balance) return alert("Invalid amount.");
-
+            const amt = parseFloat(document.getElementById(type+'-amt').value);
+            if(!amt || amt > _balance || _currentPos[type]) return alert("Check balance or open trade.");
             _balance -= amt;
             _currentPos[type] = { entry: _livePrice, margin: amt, size: (amt * (type==='futures'?_leverage:1)) / _livePrice, side: side };
-            document.getElementById(type + '-pos').style.display = 'block';
-            if(type === 'futures') document.getElementById('fut-tag').innerText = `BTC ${side.toUpperCase()} ${_leverage}x`;
+            document.getElementById(type+'-pos').style.display = 'block';
             Terminal.refreshUI();
         },
-
         closeTrade: (type) => {
             const pos = _currentPos[type];
             let pnl = (_livePrice - pos.entry) * pos.size;
             if(pos.side === 'short') pnl = (pos.entry - _livePrice) * pos.size;
             _balance += (pos.margin + pnl);
             _currentPos[type] = null;
-            document.getElementById(type + '-pos').style.display = 'none';
+            document.getElementById(type+'-pos').style.display = 'none';
             Terminal.refreshUI();
         },
-
         refreshUI: () => {
-            const formatted = _balance.toLocaleString(undefined, {minimumFractionDigits: 2});
-            document.getElementById('bal-spot').innerText = formatted;
-            document.getElementById('bal-fut').innerText = formatted;
-            ['spot', 'futures'].forEach(type => {
-                if(_currentPos[type]) {
-                    const pos = _currentPos[type];
+            const displayBal = _balance.toLocaleString(undefined, {minimumFractionDigits:2});
+            document.getElementById('nav-bal').innerText = `$${displayBal}`;
+            
+            let totalPnL = 0;
+            let activeTrades = 0;
+
+            ['spot', 'futures'].forEach(t => {
+                if(_currentPos[t]) {
+                    activeTrades++;
+                    const pos = _currentPos[t];
                     let pnl = (_livePrice - pos.entry) * pos.size;
                     if(pos.side === 'short') pnl = (pos.entry - _livePrice) * pos.size;
-                    const el = document.getElementById(type + '-pnl-val');
+                    totalPnL += pnl;
+                    const el = document.getElementById(t+'-pnl-val');
                     el.innerText = (pnl >= 0 ? '+' : '') + '$' + pnl.toFixed(2);
                     el.style.color = pnl >= 0 ? 'var(--oyyy-green)' : 'var(--oyyy-red)';
                 }
             });
-        },
 
+            const pnlNav = document.getElementById('nav-pnl');
+            if(activeTrades > 0) {
+                pnlNav.style.display = 'block';
+                const pnlValNav = document.getElementById('nav-pnl-val');
+                pnlValNav.innerText = (totalPnL >= 0 ? '+' : '') + '$' + totalPnL.toFixed(2);
+                pnlValNav.style.color = totalPnL >= 0 ? 'var(--oyyy-green)' : 'var(--oyyy-red)';
+            } else {
+                pnlNav.style.display = 'none';
+            }
+        },
         submitToCloud: async () => {
-            const btn = document.getElementById('cloud-submit-btn');
             const amt = document.getElementById('req-amt').value;
             const tgid = document.getElementById('req-tg').value;
-            if(!amt || !tgid) return alert("Fill all fields.");
-            btn.disabled = true; btn.innerText = "Processing...";
-
-            try {
-                const newReqRef = db.ref('requests').push();
-                const reqId = newReqRef.key;
-                await newReqRef.set({
-                    id: reqId,
-                    uid: _uid, // Store User ID in Firebase
-                    type: _modalType, 
-                    amount: amt, 
-                    tgid: tgid, 
-                    status: 'Pending', 
-                    time: new Date().toLocaleString()
-                });
-
-                const keyboard = {
-                    inline_keyboard: [[
-                        { text: "✅ Approve", callback_data: `approve_${reqId}` },
-                        { text: "❌ Reject", callback_data: `reject_${reqId}` }
-                    ]]
-                };
-
-                // ID is now sent to Telegram
-                const msg = `🚨 <b>NEW REQUEST</b>\n\n` +
-                            `<b>ID:</b> ${_uid}\n` +
-                            `<b>Type:</b> ${_modalType}\n` +
-                            `<b>Amount:</b> $${amt}\n` +
-                            `<b>User:</b> ${tgid}\n\n` +
-                            `<i>Manage in Vault.</i>`;
-                
-                await fetch(`https://api.telegram.org/bot${TG_CONFIG.TOKEN}/sendMessage`, {
-                    method: 'POST', 
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ 
-                        chat_id: TG_CONFIG.ADMIN_ID, 
-                        text: msg, 
-                        parse_mode: 'HTML',
-                        reply_markup: keyboard
-                    })
-                });
-
-                alert("✅ Request sent to Admin!");
-                Terminal.closeModal();
-            } catch (err) { alert("Error sending request."); }
-            finally { btn.disabled = false; btn.innerText = "Send to Cloud"; }
+            const reqRef = db.ref('requests').push();
+            await reqRef.set({ uid: _uid, amount: amt, tgid: tgid, status: 'Pending', time: new Date().toLocaleString() });
+            alert("Request Sent!");
+            Terminal.closeModal();
         },
-
-        loadAdminVault: () => {
-            const list = document.getElementById('admin-list');
-            db.ref('requests').on('value', (snapshot) => {
-                list.innerHTML = "";
-                const data = snapshot.val();
-                if(!data) { list.innerHTML = "<p>Vault is empty.</p>"; return; }
-                Object.values(data).reverse().forEach(req => {
-                    if(req.status !== 'Pending') return;
-                    const card = document.createElement('div');
-                    card.className = "pnl-card";
-                    card.style.borderLeft = "4px solid #f59e0b";
-                    card.innerHTML = `
-                        <div style="font-weight:800">${req.type} REQUEST</div>
-                        <div style="font-family:'JetBrains Mono'; font-size:1.2rem; margin:5px 0">$${req.amount}</div>
-                        <div style="font-size:0.7rem; color:var(--oyyy-muted)">
-                            <b>ID:</b> ${req.uid} <br>
-                            <b>User:</b> ${req.tgid} | ${req.time}
-                        </div>
-                        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-top:12px;">
-                            <button onclick="Terminal.processRequest('${req.id}', 'Approved')" style="background:var(--oyyy-green); color:white; border:none; padding:10px; border-radius:6px; font-weight:800; cursor:pointer;">Approve</button>
-                            <button onclick="Terminal.processRequest('${req.id}', 'Rejected')" style="background:var(--oyyy-red); color:white; border:none; padding:10px; border-radius:6px; font-weight:800; cursor:pointer;">Reject</button>
-                        </div>`;
-                    list.appendChild(card);
-                });
-            });
-        },
-
-        processRequest: async (id, newStatus) => {
-            try {
-                await db.ref('requests/' + id).update({ status: newStatus });
-                fetch(`https://api.telegram.org/bot${TG_CONFIG.TOKEN}/sendMessage`, {
-                    method: 'POST', headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ 
-                        chat_id: TG_CONFIG.ADMIN_ID, 
-                        text: `🛠 <b>VAULT UPDATE</b>\nRequest ${id.substring(0,6)} was <b>${newStatus.toUpperCase()}</b>.`,
-                        parse_mode: 'HTML'
-                    })
-                });
-            } catch (e) { alert("Failed."); }
-        },
-
         tick: async () => {
             try {
                 const r = await fetch('https://api.binance.com/api/v3/ticker/price?symbol=BTCUSDT');
@@ -343,21 +266,9 @@ const Terminal = (() => {
     };
 })();
 
-document.getElementById('admin-trigger').addEventListener('click', function (e) {
-    if (e.detail === 3) {
-        const pass = prompt("Enter Admin Key:");
-        if (pass === "noor777") {
-            Terminal.switchScreen('admin');
-            Terminal.loadAdminVault();
-        }
-    }
+document.getElementById('admin-trigger').addEventListener('click', e => {
+    if(e.detail === 3 && prompt("Key:") === "noor777") Terminal.switchScreen('admin');
 });
-
-window.onload = () => {
-    Terminal.init();
-    Terminal.switchScreen('spot');
-    setInterval(Terminal.tick, 2000);
-};
 </script>
 </body>
 </html>
