@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OldyPro | Institutional Crypto Terminal</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Mono&display=swap" rel="stylesheet">
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+    
+    <style>
+        :root {
+            --bg: #050505;
+            --surface: #0b0e11;
+            --card: #1e2329;
+            --primary: #fcd535;
+            --border: #2b3139;
+            --text: #eaecef;
+            --text-muted: #848e9c;
+            --green: #0ecb81;
+            --red: #f6465d;
+        }
+
+        body, html {
+            margin: 0; padding: 0;
+            font-family: 'Inter', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        /* --- Navigation --- */
+        nav {
+            height: 64px;
+            background: var(--surface);
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 24px;
+            z-index: 100;
+        }
+
+        .nav-left, .nav-links { display: flex; align-items: center; gap: 24px; }
+        .logo { font-size: 1.4rem; font-weight: 800; color: var(--primary); text-decoration: none; letter-spacing: -1px; }
+        .nav-item { font-size: 0.9rem; font-weight: 500; cursor: pointer; color: var(--text-muted); transition: 0.2s; }
+        .nav-item:hover, .nav-item.active { color: var(--text); }
+
+        .btn-auth { background: var(--primary); color: black; border: none; padding: 8px 16px; border-radius: 4px; font-weight: 600; cursor: pointer; }
+        .user-status { display: none; align-items: center; gap: 12px; }
+        .avatar { width: 32px; height: 32px; background: #333; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.8rem; border: 1px solid var(--border); }
+
+        /* --- Page System --- */
+        .page { display: none; height: calc(100vh - 65px); overflow-y: auto; }
+        .page.active { display: block; }
+
+        /* --- Spot Trade Layout --- */
+        .terminal-grid {
+            display: grid;
+            grid-template-columns: 1fr 320px;
+            height: 100%;
+            background: var(--border);
+            gap: 1px;
+        }
+        .chart-box { background: var(--bg); position: relative; }
+        .order-panel { background: var(--surface); padding: 24px; display: flex; flex-direction: column; gap: 20px; }
+
+        /* --- Inputs & UI --- */
+        .input-group { display: flex; flex-direction: column; gap: 8px; }
+        .input-group label { font-size: 0.75rem; color: var(--text-muted); }
+        .t-input { background: var(--bg); border: 1px solid var(--border); padding: 12px; color: white; border-radius: 4px; font-family: 'Space Mono', monospace; }
+
+        /* --- Market Page --- */
+        .market-container { max-width: 1200px; margin: 40px auto; padding: 0 20px; }
+        .m-table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        .m-table th { text-align: left; color: var(--text-muted); font-size: 0.8rem; padding: 15px; border-bottom: 1px solid var(--border); }
+        .m-table td { padding: 20px 15px; border-bottom: 1px solid var(--border); font-weight: 500; }
+
+        /* --- Gmail Modal --- */
+        .modal-overlay {
+            position: fixed; top:0; left:0; width:100%; height:100%;
+            background: rgba(0,0,0,0.9); display: none; justify-content: center; align-items: center; z-index: 2000;
+            backdrop-filter: blur(5px);
+        }
+        .modal-card { background: var(--card); padding: 40px; border-radius: 12px; width: 380px; text-align: center; border: 1px solid var(--border); }
+        .modal-card h2 { margin-top: 0; color: var(--primary); }
+
+        @media (max-width: 1000px) {
+            .terminal-grid { grid-template-columns: 1fr; overflow-y: auto; }
+            .order-panel { border-top: 1px solid var(--border); }
+        }
+    </style>
+</head>
+<body>
+
+    <nav>
+        <div class="nav-left">
+            <a class="logo" onclick="showPage('home')">OLDYPRO</a>
+            <div class="nav-links">
+                <div class="nav-item" onclick="showPage('market')">Markets</div>
+                <div class="nav-item" onclick="showPage('spot')">Spot Trade</div>
+                <div class="nav-item" onclick="showPage('p2p')">P2P Exchange</div>
+            </div>
+        </div>
+        <div class="nav-right">
+            <div id="auth-out">
+                <button class="btn-auth" onclick="toggleModal(true)">Login with Gmail</button>
+            </div>
+            <div id="auth-in" class="user-status" onclick="showPage('profile')">
+                <span id="user-mail" style="font-size: 0.8rem; color: var(--text-muted);"></span>
+                <div class="avatar">U</div>
+            </div>
+        </div>
+    </nav>
+
+    <div id="home" class="page active" style="display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center;">
+        <h1 style="font-size: 4rem; margin: 0;">Trade Beyond Limits.</h1>
+        <p style="color: var(--text-muted); font-size: 1.2rem; max-width: 600px; margin-top: 20px;">
+            Institutional grade spot trading and secure P2P exchange for the global community.
+        </p>
+        <div style="margin-top: 40px; display: flex; gap: 20px;">
+            <button class="btn-auth" style="padding: 15px 40px;" onclick="showPage('spot')">Open Terminal</button>
+            <button class="btn-auth" style="padding: 15px 40px; background: transparent; border: 1px solid var(--border); color: white;" onclick="window.open('https://t.me/+sqQaXt0lnJdhNzg1')">Join VIP</button>
+        </div>
+    </div>
+
+    <div id="market" class="page">
+        <div class="market-container">
+            <h2>Market Overview</h2>
+            <table class="m-table">
+                <thead>
+                    <tr><th>Pair</th><th>Price</th><th>24h Change</th><th>Action</th></tr>
+                </thead>
+                <tbody>
+                    <tr><td>BTC / USDT</td><td>$71,450.20</td><td style="color: var(--green);">+2.15%</td><td><button class="btn-auth" onclick="showPage('spot')">Trade</button></td></tr>
+                    <tr><td>ETH / USDT</td><td>$3,840.12</td><td style="color: var(--red);">-0.85%</td><td><button class="btn-auth" onclick="showPage('spot')">Trade</button></td></tr>
+                    <tr><td>BNB / USDT</td><td>$590.45</td><td style="color: var(--green);">+1.10%</td><td><button class="btn-auth" onclick="showPage('spot')">Trade</button></td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div id="spot" class="page">
+        <div class="terminal-grid">
+            <div class="chart-box" id="tradingview_main"></div>
+            <div class="order-panel">
+                <h3 style="margin: 0;">Spot Trading</h3>
+                <div style="display: flex; gap: 10px;">
+                    <button style="flex: 1; padding: 12px; background: var(--green); border: none; border-radius: 4px; color: white; font-weight: bold;">BUY</button>
+                    <button style="flex: 1; padding: 12px; background: transparent; border: 1px solid var(--border); color: var(--text-muted);">SELL</button>
+                </div>
+                <div class="input-group">
+                    <label>Price (USDT)</label>
+                    <input type="text" class="t-input" value="71450.00">
+                </div>
+                <div class="input-group">
+                    <label>Amount (BTC)</label>
+                    <input type="text" class="t-input" placeholder="0.00">
+                </div>
+                <button class="btn-auth" style="padding: 15px; margin-top: 10px;" onclick="initTrade()">Execute Order</button>
+                <div style="margin-top: auto; font-size: 0.75rem; color: var(--text-muted); text-align: center;">
+                    Liquidity provided by @Owner_Noor
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="p2p" class="page" style="padding: 60px;">
+        <div style="max-width: 700px; margin: auto; background: var(--surface); padding: 40px; border-radius: 12px; border: 1px solid var(--border);">
+            <span style="color: var(--primary); font-size: 0.7rem; letter-spacing: 2px;">SECURE P2P DESK</span>
+            <h1 style="margin: 10px 0;">P2P USDT Exchange</h1>
+            <p style="color: var(--text-muted); margin-bottom: 40px;">Direct trading with verified merchant <b>@Owner_Noor</b>. Zero fees.</p>
+            
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                <button class="btn-auth" style="padding: 20px; background: var(--green); color: white;" onclick="window.open('https://t.me/Owner_Noor?text=BUY_USDT')">BUY USDT</button>
+                <button class="btn-auth" style="padding: 20px; background: var(--red); color: white;" onclick="window.open('https://t.me/Owner_Noor?text=SELL_USDT')">SELL USDT</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="profile" class="page" style="padding: 60px;">
+        <div style="max-width: 600px; margin: auto;">
+            <h2>Account Center</h2>
+            <div style="background: var(--surface); padding: 30px; border-radius: 8px; border: 1px solid var(--border);">
+                <p style="color: var(--text-muted);">Email Address</p>
+                <h3 id="profile-email">Not Logged In</h3>
+                <hr style="border: 0; border-top: 1px solid var(--border); margin: 20px 0;">
+                <button class="btn-auth" style="background: var(--red); color: white;" onclick="logout()">Sign Out</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="auth-modal">
+        <div class="modal-card">
+            <div id="step-1">
+                <h2>Gmail Login</h2>
+                <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 25px;">Enter your Gmail to receive a secure login link.</p>
+                <div class="input-group" style="text-align: left;">
+                    <label>Email Address</label>
+                    <input type="email" id="login-email" class="t-input" placeholder="name@gmail.com" style="width: 100%; box-sizing: border-box;">
+                </div>
+                <button class="btn-auth" style="width: 100%; padding: 14px; margin-top: 20px;" onclick="sendMagicLink()">Send Magic Link</button>
+            </div>
+            <div id="step-2" style="display: none;">
+                <div style="font-size: 3rem;">✉️</div>
+                <h2>Check Gmail</h2>
+                <p style="font-size: 0.9rem; color: var(--text-muted);">We've sent a secure link to your inbox. Click the link to instantly log in.</p>
+                <button class="btn-auth" style="background: transparent; border: 1px solid var(--border); color: white;" onclick="location.reload()">Back</button>
+            </div>
+        </div>
+    </div>
+
+    <script type="text/javascript" src="https://s3.tradingview.com/tv.js"></script>
+    <script>
+        // --- FIREBASE CONFIG ---
+        const firebaseConfig = {
+            apiKey: "YOUR_API_KEY",
+            authDomain: "YOUR_PROJECT.firebaseapp.com",
+            projectId: "YOUR_PROJECT_ID",
+            storageBucket: "YOUR_PROJECT.appspot.com",
+            messagingSenderId: "YOUR_SENDER_ID",
+            appId: "YOUR_APP_ID"
+        };
+        firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+
+        // --- NAVIGATION ---
+        function showPage(pageId) {
+            document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+            document.getElementById(pageId).classList.add('active');
+            if(pageId === 'spot') {
+                new TradingView.widget({
+                    "autosize": true, "symbol": "BINANCE:BTCUSDT", "interval": "60", "theme": "dark",
+                    "container_id": "tradingview_main", "hide_side_toolbar": false
+                });
+            }
+        }
+
+        function toggleModal(show) { document.getElementById('auth-modal').style.display = show ? 'flex' : 'none'; }
+
+        // --- GMAIL MAGIC LINK LOGIC ---
+        function sendMagicLink() {
+            const email = document.getElementById('login-email').value;
+            const actionCodeSettings = { url: window.location.href, handleCodeInApp: true };
+            
+            auth.sendSignInLinkToEmail(email, actionCodeSettings).then(() => {
+                window.localStorage.setItem('emailForSignIn', email);
+                document.getElementById('step-1').style.display = 'none';
+                document.getElementById('step-2').style.display = 'block';
+            }).catch(err => alert(err.message));
+        }
+
+        // --- COMPLETE LOGIN ON PAGE LOAD ---
+        if (auth.isSignInWithEmailLink(window.location.href)) {
+            let email = window.localStorage.getItem('emailForSignIn');
+            if (!email) email = window.prompt('Confirm your email:');
+            
+            auth.signInWithEmailLink(email, window.location.href).then((res) => {
+                window.localStorage.removeItem('emailForSignIn');
+                updateUI(res.user);
+            }).catch(err => alert("Link expired or invalid."));
+        }
+
+        auth.onAuthStateChanged(user => { if(user) updateUI(user); });
+
+        function updateUI(user) {
+            document.getElementById('auth-out').style.display = 'none';
+            document.getElementById('auth-in').style.display = 'flex';
+            document.getElementById('user-mail').innerText = user.email;
+            document.getElementById('profile-email').innerText = user.email;
+            toggleModal(false);
+        }
+
+        function logout() { auth.signOut().then(() => location.reload()); }
+
+        function initTrade() {
+            if(!auth.currentUser) { alert("Please login with Gmail to trade!"); toggleModal(true); }
+            else { window.open('https://t.me/Owner_Noor?text=Executing_Spot_Order'); }
+        }
+    </script>
+</body>
+</html>
