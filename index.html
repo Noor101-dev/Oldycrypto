@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Oldypro | OYYY UI Production</title>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;700;800&family=JetBrains+Mono:wght@600&display=swap" rel="stylesheet">
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-auth-compat.js"></script>
+    <script type="text/javascript" src="https://s3.tradingview.com/tv.js"></script>
+    <style>
+        :root {
+            --oyyy-bg: #ffffff; --oyyy-surface: #f8fafc; --oyyy-border: #e2e8f0;
+            --oyyy-accent: #3b82f6; --oyyy-green: #10b981; --oyyy-red: #ef4444;
+            --oyyy-text: #1e293b; --oyyy-muted: #64748b;
+        }
+
+        body, html { margin: 0; padding: 0; font-family: 'Plus Jakarta Sans', sans-serif; background: var(--oyyy-bg); color: var(--oyyy-text); height: 100vh; overflow: hidden; }
+        
+        nav { height: 64px; padding: 0 24px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--oyyy-border); background: white; z-index: 100; position: relative; }
+        .logo { font-size: 1.4rem; font-weight: 800; }
+        .nav-links { display: flex; gap: 8px; background: var(--oyyy-surface); padding: 5px; border-radius: 10px; }
+        .nav-btn { padding: 8px 16px; border-radius: 7px; cursor: pointer; font-size: 0.8rem; font-weight: 700; color: var(--oyyy-muted); }
+        .nav-btn.active { background: white; color: var(--oyyy-accent); box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+
+        .screen { display: none; height: calc(100vh - 64px); grid-template-columns: 1fr 340px; }
+        .screen.active { display: grid; }
+        .admin-full { display: none; padding: 40px; overflow-y: auto; height: calc(100vh - 64px); }
+
+        .sidebar { border-left: 1px solid var(--oyyy-border); padding: 20px; display: flex; flex-direction: column; gap: 20px; background: white; }
+        .chart-box { background: var(--oyyy-surface); padding: 12px; }
+        .oyyy-input { background: var(--oyyy-surface); border: 1px solid var(--oyyy-border); padding: 12px; border-radius: 8px; width: 100%; box-sizing: border-box; font-family: 'JetBrains Mono'; outline: none; }
+        .btn-action { padding: 16px; border-radius: 8px; border: none; font-weight: 800; cursor: pointer; color: white; width: 100%; }
+        
+        #auth-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: white; z-index: 9999; display: flex; align-items: center; justify-content: center; }
+
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        th { text-align: left; color: var(--oyyy-muted); padding: 12px; border-bottom: 2px solid var(--oyyy-surface); font-size: 0.75rem; }
+        td { padding: 12px; border-bottom: 1px solid var(--oyyy-surface); font-size: 0.9rem; }
+
+        .pnl-card { background: var(--oyyy-surface); border-radius: 12px; padding: 15px; border: 1px solid var(--oyyy-border); }
+    </style>
+</head>
+<body>
+
+<div id="auth-overlay">
+    <div style="width: 320px; text-align: center;">
+        <h1 class="logo">Oldypro</h1>
+        <p style="color: var(--oyyy-muted); font-size: 0.85rem; margin-bottom: 20px;">Enter Gmail for Login Link</p>
+        <input type="email" id="auth-email" class="oyyy-input" placeholder="example@gmail.com">
+        <button onclick="sendMagicLink()" class="btn-action" style="background: var(--oyyy-accent); margin-top: 15px;">Login with Gmail</button>
+    </div>
+</div>
+
+<nav>
+    <div class="logo">Oldypro</div>
+    <div class="nav-links">
+        <div id="tab-spot" class="nav-btn active" onclick="showScreen('spot')">Spot</div>
+        <div id="tab-futures" class="nav-btn" onclick="showScreen('futures')">Futures</div>
+        <div id="tab-admin" class="nav-btn" style="background: #1e293b; color: white;" onclick="showScreen('admin')">Admin</div>
+    </div>
+    <div style="display:flex; align-items:center; gap:15px;">
+        <div id="price-ticker" style="font-family:'JetBrains Mono'; font-weight:800; color:var(--oyyy-accent)">$0.00</div>
+        <button onclick="openModal('Deposit')" style="background:var(--oyyy-green); color:white; border:none; padding:8px 16px; border-radius:8px; font-weight:700; cursor:pointer;">Deposit</button>
+        <button onclick="openModal('Withdrawal')" style="background:var(--oyyy-red); color:white; border:none; padding:8px 16px; border-radius:8px; font-weight:700; cursor:pointer;">Withdraw</button>
+    </div>
+</nav>
+
+<div id="screen-spot" class="screen active">
+    <div class="chart-box"><div id="tv_spot" style="height:100%"></div></div>
+    <div class="sidebar">
+        <h3>Spot Market</h3>
+        <input type="number" id="spot-amt" class="oyyy-input" placeholder="USDT Amount">
+        <button class="btn-action" style="background:var(--oyyy-green)" onclick="alert('Spot order sent!')">Buy BTC</button>
+        <div style="margin-top:auto; padding:15px; background:var(--oyyy-surface); border-radius:10px;">
+            <div style="font-size:0.75rem; color:var(--oyyy-muted)">Wallet Balance</div>
+            <div id="bal-spot" style="font-size:1.4rem; font-weight:800;">5,000.00</div>
+        </div>
+    </div>
+</div>
+
+<div id="screen-futures" class="screen">
+    <div class="chart-box"><div id="tv_futures" style="height:100%"></div></div>
+    <div class="sidebar">
+        <h3>Futures</h3>
+        <label style="font-size:0.7rem; font-weight:800;">LEVERAGE: <span id="lev-ui" style="color:var(--oyyy-accent)">20x</span></label>
+        <input type="range" min="1" max="125" value="20" oninput="updateLev(this.value)" style="width:100%; accent-color:var(--oyyy-accent)">
+        <input type="number" id="fut-amt" class="oyyy-input" placeholder="Margin (USDT)">
+        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
+            <button class="btn-action" style="background:var(--oyyy-green)" onclick="alert('Long Position opened')">Long</button>
+            <button class="btn-action" style="background:var(--oyyy-red)" onclick="alert('Short Position opened')">Short</button>
+        </div>
+        <div style="margin-top:auto; padding:15px; background:var(--oyyy-surface); border-radius:10px;">
+            <div style="font-size:0.75rem; color:var(--oyyy-muted)">Available Margin</div>
+            <div id="bal-fut" style="font-size:1.4rem; font-weight:800;">5,000.00</div>
+        </div>
+    </div>
+</div>
+
+<div id="screen-admin" class="admin-full">
+    <div style="display:flex; justify-content:space-between; align-items:center;">
+        <h2>Admin Panel: Funds Approval</h2>
+        <span style="font-size:0.8rem; background:var(--oyyy-border); padding:5px 10px; border-radius:20px;">Role: Root Admin</span>
+    </div>
+    <table>
+        <thead><tr><th>Request ID</th><th>Type</th><th>Amount</th><th>Status</th><th>Action</th></tr></thead>
+        <tbody id="admin-list"></tbody>
+    </table>
+</div>
+
+<div id="req-modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:10001; align-items:center; justify-content:center; backdrop-filter:blur(4px);">
+    <div style="background:white; padding:30px; border-radius:15px; width:300px;">
+        <h3 id="modal-title">Deposit</h3>
+        <input type="number" id="req-amt" class="oyyy-input" placeholder="Enter Amount">
+        <button onclick="submitRequest()" class="btn-action" style="background:var(--oyyy-accent); margin-top:15px;">Submit Request</button>
+        <button onclick="closeModal()" style="width:100%; border:none; background:none; margin-top:10px; cursor:pointer; color:var(--oyyy-muted);">Cancel</button>
+    </div>
+</div>
+
+<script>
+    let balance = 5000;
+    let livePrice = 0;
+    let leverage = 20;
+    let currentReqType = 'Deposit';
+    let requests = JSON.parse(localStorage.getItem('oyyy_req_queue')) || [];
+
+    // --- INTEGRATED FIREBASE CONFIG ---
+    const firebaseConfig = {
+        apiKey: "AIzaSyBQ1OFnuMKwshadRL3wbO9g0ibkA4Tj5I8",
+        authDomain: "oldycrypto.firebaseapp.com",
+        projectId: "oldycrypto",
+        storageBucket: "oldycrypto.firebasestorage.app",
+        messagingSenderId: "921965725357",
+        appId: "1:921965725357:web:016c9d665ad904b5886824"
+    };
+    firebase.initializeApp(firebaseConfig);
+
+    function sendMagicLink() {
+        const email = document.getElementById('auth-email').value;
+        if(!email) return alert("Email required");
+        firebase.auth().sendSignInLinkToEmail(email, { url: window.location.href, handleCodeInApp: true })
+        .then(() => {
+            window.localStorage.setItem('emailForSignIn', email);
+            alert("Magic link sent to " + email);
+        });
+    }
+
+    if (firebase.auth().isSignInWithEmailLink(window.location.href)) {
+        let email = window.localStorage.getItem('emailForSignIn');
+        firebase.auth().signInWithEmailLink(email, window.location.href).then(() => {
+            document.getElementById('auth-overlay').style.display = 'none';
+            initChart('spot');
+        });
+    }
+
+    function showScreen(s) {
+        document.querySelectorAll('.screen, .admin-full').forEach(el => el.style.display = 'none');
+        document.querySelectorAll('.nav-btn').forEach(el => el.classList.remove('active'));
+        if(s === 'admin') { document.getElementById('screen-admin').style.display = 'block'; renderAdmin(); }
+        else { document.getElementById('screen-' + s).style.display = 'grid'; initChart(s); }
+        document.getElementById('tab-' + s).classList.add('active');
+    }
+
+    function openModal(type) {
+        currentReqType = type;
+        document.getElementById('modal-title').innerText = type + " Request";
+        document.getElementById('req-modal').style.display = 'flex';
+    }
+
+    function closeModal() { document.getElementById('req-modal').style.display = 'none'; }
+
+    function submitRequest() {
+        const amt = parseFloat(document.getElementById('req-amt').value);
+        if(!amt) return;
+        requests.push({ id: Math.floor(Math.random()*9000)+1000, type: currentReqType, amount: amt, status: 'Pending' });
+        localStorage.setItem('oyyy_req_queue', JSON.stringify(requests));
+        closeModal();
+        alert("Request sent to Admin Queue.");
+    }
+
+    function renderAdmin() {
+        const list = document.getElementById('admin-list');
+        list.innerHTML = '';
+        requests.forEach(r => {
+            list.innerHTML += `<tr>
+                <td>#${r.id}</td>
+                <td><b>${r.type}</b></td>
+                <td>$${r.amount.toLocaleString()}</td>
+                <td style="color:${r.status === 'Pending' ? '#f59e0b' : '#10b981'}; font-weight:700;">${r.status}</td>
+                <td>${r.status === 'Pending' ? `<button onclick="approve(${r.id})" style="background:#10b981; color:white; border:none; padding:5px 10px; border-radius:4px; cursor:pointer;">Approve</button>` : 'COMPLETED'}</td>
+            </tr>`;
+        });
+    }
+
+    function approve(id) {
+        const r = requests.find(x => x.id === id);
+        r.status = 'Approved';
+        if(r.type === 'Deposit') balance += r.amount;
+        else balance -= r.amount;
+        localStorage.setItem('oyyy_req_queue', JSON.stringify(requests));
+        updateUI();
+        renderAdmin();
+    }
+
+    function updateUI() {
+        const f = balance.toLocaleString(undefined, {minimumFractionDigits: 2});
+        document.getElementById('bal-spot').innerText = f;
+        document.getElementById('bal-fut').innerText = f;
+    }
+
+    async function tick() {
+        const r = await fetch('https://api.binance.com/api/v3/ticker/price?symbol=BTCUSDT');
+        const d = await r.json();
+        document.getElementById('price-ticker').innerText = `BTC $${parseFloat(d.price).toLocaleString()}`;
+    }
+
+    function updateLev(v) { leverage = v; document.getElementById('lev-ui').innerText = v + 'x'; }
+    function initChart(p) {
+        new TradingView.widget({
+            "autosize": true, "symbol": "BINANCE:BTCUSDT", "interval": "15",
+            "theme": "light", "container_id": "tv_" + p, "style": "1"
+        });
+    }
+
+    window.onload = () => { setInterval(tick, 2000); updateUI(); };
+</script>
+</body>
+</html>
