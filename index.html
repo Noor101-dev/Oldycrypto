@@ -45,7 +45,7 @@
         .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 1000; align-items: center; justify-content: center; backdrop-filter: blur(4px); }
         .modal-box { background: white; padding: 30px; border-radius: 15px; width: 320px; }
 
-        @media (max-width: 768px) { .screen { grid-template-columns: 1fr; } }
+        @media (max-width: 768px) { .screen { grid-template-columns: 1fr; height: auto; overflow-y: auto; } }
     </style>
 </head>
 <body>
@@ -67,7 +67,7 @@
         <div class="logo" id="admin-trigger">Oldypro</div>
         <div class="wallet-pill">
             <span style="color:var(--oyyy-muted)">Wallet:</span> 
-            <span id="nav-bal" style="color:var(--oyyy-text)">$5,000.00</span>
+            <span id="nav-bal" style="color:var(--oyyy-text)">$0.00</span>
         </div>
         <div id="nav-pnl" class="live-pnl-pill" style="display:none">
             PnL: <span id="nav-pnl-val">$0.00</span>
@@ -127,7 +127,7 @@
             <h2>Admin Vault</h2>
             <button onclick="Terminal.switchScreen('spot')" style="background:var(--oyyy-text); color:white; border:none; padding:8px 15px; border-radius:8px; cursor:pointer; font-weight:700;">Exit Vault</button>
         </div>
-        <div id="admin-list" style="margin-top:20px;"></div>
+        <div id="admin-list" style="margin-top:20px; display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 15px;"></div>
     </div>
 </div>
 
@@ -163,13 +163,14 @@ const Auth = {
         auth.signInWithEmailAndPassword(document.getElementById('auth-email').value, document.getElementById('auth-pass').value)
             .catch(e => msg.innerText = e.message);
     },
-    signUp: () => {
-        const msg = document.getElementById('auth-msg');
+    signUp: async () => {
+        const email = document.getElementById('auth-email').value;
         const pass = document.getElementById('auth-pass').value;
-        if(pass.length < 6) return msg.innerText = "Password must be 6+ chars";
-        msg.innerText = "Creating Account...";
-        auth.createUserWithEmailAndPassword(document.getElementById('auth-email').value, pass)
-            .catch(e => msg.innerText = e.message);
+        if(pass.length < 6) return document.getElementById('auth-msg').innerText = "Password must be 6+ chars";
+        try {
+            const res = await auth.createUserWithEmailAndPassword(email, pass);
+            await db.ref('users/' + res.user.uid).set({ balance: 0 });
+        } catch(e) { document.getElementById('auth-msg').innerText = e.message; }
     },
     logout: () => { auth.signOut().then(() => location.reload()); }
 };
@@ -182,45 +183,107 @@ auth.onAuthStateChanged(user => {
 const TG_CONFIG = { TOKEN: "8706675125:AAGsw0q6IJFuzKg0DD17-8ThkMAmyvdyubg", ADMIN_ID: "7647536292" };
 
 const Terminal = (() => {
-    let _balance = 5000;
+    let _balance = 0;
     let _livePrice = 0;
     let _leverage = 20;
     let _currentPos = { spot: null, futures: null };
     let _uid = "";
 
     return {
-        init: (u) => { _uid = u; Terminal.switchScreen('spot'); setInterval(Terminal.tick, 1500); },
+        init: (u) => { 
+            _uid = u; 
+            Terminal.switchScreen('spot'); 
+            setInterval(Terminal.tick, 1500); 
+            db.ref('users/' + u + '/balance').on('value', (snap) => {
+                _balance = snap.val() || 0;
+                Terminal.refreshUI();
+            });
+            db.ref('notifications/' + u).on('child_added', (snap) => {
+                const note = snap.val();
+                if(!note.read) {
+                    alert(`📬 NOTIFICATION: ${note.msg}`);
+                    db.ref('notifications/' + u + '/' + snap.key).update({ read: true });
+                }
+            });
+        },
         switchScreen: (s) => {
             document.querySelectorAll('.screen').forEach(e => e.style.display='none');
             document.querySelectorAll('.nav-btn').forEach(e => e.classList.remove('active'));
             document.getElementById('screen-'+s).style.display = (s==='admin'?'block':'grid');
             if(document.getElementById('tab-'+s)) document.getElementById('tab-'+s).classList.add('active');
-            if(s !== 'admin') new TradingView.widget({ "autosize": true, "symbol": "BINANCE:BTCUSDT", "interval": "1", "theme": "light", "container_id": "tv_"+s });
+            if(s === 'admin') Terminal.loadAdminRequests();
+            else new TradingView.widget({ "autosize": true, "symbol": "BINANCE:BTCUSDT", "interval": "1", "theme": "light", "container_id": "tv_"+s });
         },
         updateLev: (v) => { _leverage = v; document.getElementById('lev-ui').innerText = v + 'x'; },
         openModal: (t) => { document.getElementById('modal-title').innerText = t; document.getElementById('req-modal').style.display='flex'; },
         closeModal: () => { document.getElementById('req-modal').style.display='none'; },
+        
+        loadAdminRequests: () => {
+            const listDiv = document.getElementById('admin-list');
+            db.ref('requests').on('value', (snapshot) => {
+                listDiv.innerHTML = "";
+                const data = snapshot.val();
+                if(!data) return listDiv.innerHTML = "<p>No pending requests.</p>";
+                Object.keys(data).forEach(key => {
+                    const req = data[key];
+                    if(req.status === 'Pending') {
+                        const card = document.createElement('div');
+                        card.className = "pnl-card";
+                        card.innerHTML = `
+                            <div style="font-size:0.8rem;"><b>User:</b> @${req.tgid}</div>
+                            <div style="font-size:1.5rem; font-weight:800; margin:5px 0;">$${req.amount}</div>
+                            <div style="font-size:0.6rem; color:var(--oyyy-muted); margin-bottom:10px;">ID: ${req.uid}</div>
+                            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
+                                <button onclick="Terminal.adminAction('${key}', '${req.uid}', ${req.amount}, 'Approve')" style="background:var(--oyyy-green); color:white; border:none; padding:10px; border-radius:8px; cursor:pointer; font-weight:800;">APPROVE</button>
+                                <button onclick="Terminal.adminAction('${key}', '${req.uid}', ${req.amount}, 'Reject')" style="background:var(--oyyy-red); color:white; border:none; padding:10px; border-radius:8px; cursor:pointer; font-weight:800;">REJECT</button>
+                            </div>`;
+                        listDiv.appendChild(card);
+                    }
+                });
+            });
+        },
+
+        adminAction: async (reqKey, userUID, amount, action) => {
+            if(action === 'Approve') {
+                await db.ref('requests/' + reqKey).update({ status: 'Approved' });
+                db.ref('users/' + userUID + '/balance').transaction(curr => (curr || 0) + parseFloat(amount));
+                await db.ref('notifications/' + userUID).push({
+                    msg: `Deposit of $${amount} has been Approved!`,
+                    read: false, time: new Date().toLocaleString()
+                });
+                alert("Approved & Credited!");
+            } else {
+                await db.ref('requests/' + reqKey).update({ status: 'Rejected' });
+                await db.ref('notifications/' + userUID).push({
+                    msg: `Deposit of $${amount} was Rejected. Check details or contact Admin.`,
+                    read: false, time: new Date().toLocaleString()
+                });
+                alert("Request Rejected.");
+            }
+        },
+
         trade: (type, side) => {
             const amt = parseFloat(document.getElementById(type+'-amt').value);
-            if(!amt || amt > _balance || _currentPos[type]) return alert("Invalid amount or open position exists.");
-            _balance -= amt;
+            if(!amt || amt > _balance || _currentPos[type]) return alert("Check balance or open position.");
+            db.ref('users/' + _uid + '/balance').transaction(curr => curr - amt);
             _currentPos[type] = { entry: _livePrice, margin: amt, size: (amt * (type==='futures'?_leverage:1)) / _livePrice, side: side };
             document.getElementById(type+'-pos').style.display = 'block';
             Terminal.refreshUI();
         },
+
         closeTrade: (type) => {
             const pos = _currentPos[type];
             let pnl = (_livePrice - pos.entry) * pos.size;
             if(pos.side === 'short') pnl = (pos.entry - _livePrice) * pos.size;
-            _balance += (pos.margin + pnl);
+            db.ref('users/' + _uid + '/balance').transaction(curr => curr + (pos.margin + pnl));
             _currentPos[type] = null;
             document.getElementById(type+'-pos').style.display = 'none';
             Terminal.refreshUI();
         },
+
         refreshUI: () => {
             document.getElementById('nav-bal').innerText = `$${_balance.toLocaleString(undefined, {minimumFractionDigits:2})}`;
-            let totalPnL = 0;
-            let hasActive = false;
+            let totalPnL = 0; let hasActive = false;
             ['spot', 'futures'].forEach(t => {
                 if(_currentPos[t]) {
                     hasActive = true;
@@ -241,34 +304,29 @@ const Terminal = (() => {
                 navPnLVal.style.color = totalPnL >= 0 ? 'var(--oyyy-green)' : 'var(--oyyy-red)';
             } else { navPnL.style.display = 'none'; }
         },
+
         submitToCloud: async () => {
             const amt = document.getElementById('req-amt').value;
             const tgid = document.getElementById('req-tg').value;
             if(!amt || !tgid) return alert("Fill all fields.");
             const reqRef = db.ref('requests').push();
             await reqRef.set({ uid: _uid, amount: amt, tgid: tgid, status: 'Pending', time: new Date().toLocaleString() });
+            
+            const keyboard = {
+                inline_keyboard: [[
+                    { text: "✅ Approve", callback_data: `approve_${reqRef.key}` },
+                    { text: "❌ Reject", callback_data: `reject_${reqRef.key}` }
+                ]]
+            };
+
             await fetch(`https://api.telegram.org/bot${TG_CONFIG.TOKEN}/sendMessage`, {
                 method: 'POST', headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ chat_id: TG_CONFIG.ADMIN_ID, text: `🚨 <b>NEW REQUEST</b>\nID: ${_uid}\nAmt: $${amt}\nTG: ${tgid}`, parse_mode: 'HTML' })
+                body: JSON.stringify({ 
+                    chat_id: TG_CONFIG.ADMIN_ID, 
+                    text: `🚨 <b>NEW DEPOSIT</b>\nUID: <code>${_uid}</code>\nAmt: $${amt}\nTG: @${tgid}`, 
+                    parse_mode: 'HTML',
+                    reply_markup: keyboard
+                })
             });
             alert("Request sent to Admin!");
-            Terminal.closeModal();
-        },
-        tick: async () => {
-            try {
-                const r = await fetch('https://api.binance.com/api/v3/ticker/price?symbol=BTCUSDT');
-                const d = await r.json();
-                _livePrice = parseFloat(d.price);
-                document.getElementById('price-ticker').innerText = `BTC $${_livePrice.toLocaleString()}`;
-                Terminal.refreshUI();
-            } catch(e) {}
-        }
-    };
-})();
-
-document.getElementById('admin-trigger').addEventListener('click', e => {
-    if(e.detail === 3 && prompt("Admin Key:") === "noor777") { Terminal.switchScreen('admin'); }
-});
-</script>
-</body>
-</html>
+            Terminal.closeModal
