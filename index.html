@@ -42,6 +42,13 @@
         
         .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 1000; align-items: center; justify-content: center; backdrop-filter: blur(4px); }
         .modal-box { background: white; padding: 30px; border-radius: 15px; width: 320px; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1); }
+
+        /* Mobile adjustments */
+        @media (max-width: 768px) {
+            .screen { grid-template-columns: 1fr; overflow-y: auto; height: auto; }
+            .sidebar { border-left: none; border-top: 1px solid var(--oyyy-border); }
+            .chart-box { height: 300px; }
+        }
     </style>
 </head>
 <body>
@@ -110,19 +117,17 @@
         <h3 id="modal-title">Deposit Funds</h3>
         <p style="font-size: 0.8rem; color: var(--oyyy-muted); margin-top: -10px;">Request will be sent to Admin Vault.</p>
         <input type="number" id="req-amt" class="oyyy-input" placeholder="Amount (USDT)">
-        <input type="text" id="req-tg" class="oyyy-input" placeholder="Your Telegram ID (e.g., @user)">
-        <button onclick="Terminal.submitToCloud()" class="btn-action" style="background:var(--oyyy-accent); margin-top:10px;">Send to Cloud</button>
+        <input type="text" id="req-tg" class="oyyy-input" placeholder="Your Telegram ID">
+        <button id="cloud-submit-btn" onclick="Terminal.submitToCloud()" class="btn-action" style="background:var(--oyyy-accent); margin-top:10px;">Send to Cloud</button>
         <button onclick="Terminal.closeModal()" style="width:100%; border:none; background:none; margin-top:10px; cursor:pointer; color:var(--oyyy-muted); font-weight: 700;">Cancel</button>
     </div>
 </div>
 
 <script>
 /**
- * 🚀 OLDYPRO MASTER ENGINE
- * Includes: Trading Logic, Firebase Database, Telegram API
+ * 🚀 OLDYPRO MASTER ENGINE (FIXED)
  */
 
-// 1. FIREBASE CONFIGURATION (Your exact keys)
 const firebaseConfig = {
     apiKey: "AIzaSyBQ1OFnuMKwshadRL3wbO9g0ibkA4Tj5I8",
     authDomain: "oldycrypto.firebaseapp.com",
@@ -133,31 +138,29 @@ const firebaseConfig = {
     appId: "1:921965725357:web:901122d49e1217ea886824"
 };
 
-// Start Firebase Engine
 firebase.initializeApp(firebaseConfig);
 const db = firebase.database();
 
-// 2. TELEGRAM CONFIGURATION
-const TG_BOT_TOKEN = '8706675125:AAGsw0q6IJFuzKg0DD17-8ThkMAmyvdyubg';
-const TG_ADMIN_ID = '7647536292';
+const TG_CONFIG = {
+    TOKEN: "8706675125:AAGsw0q6IJFuzKg0DD17-8ThkMAmyvdyubg",
+    ADMIN_ID: "7647536292"
+};
 
 const Terminal = (() => {
-    // SYSTEM MEMORY (Variables)
-    let _balance = 5000; // Starting fake money
+    let _balance = 5000;
     let _livePrice = 0;
     let _leverage = 20;
     let _currentPos = { spot: null, futures: null };
     let _modalType = 'Deposit';
 
     return {
-        // UI FUNCTIONS
         switchScreen: (s) => {
             document.querySelectorAll('.screen').forEach(el => el.style.display = 'none');
             document.querySelectorAll('.nav-btn').forEach(el => el.classList.remove('active'));
-            document.getElementById('screen-' + s).style.display = 'grid';
+            const target = document.getElementById('screen-' + s);
+            if(target) target.style.display = 'grid';
             document.getElementById('tab-' + s).classList.add('active');
             
-            // Load Charts
             new TradingView.widget({ "autosize": true, "symbol": "BINANCE:BTCUSDT", "interval": "15", "theme": "light", "container_id": "tv_" + s });
         },
         
@@ -176,51 +179,41 @@ const Terminal = (() => {
             document.getElementById('req-modal').style.display = 'none'; 
         },
 
-        // TRADING FUNCTIONS
         trade: (type, side) => {
-            if(_currentPos[type]) return alert("Please close your current position first.");
+            if(_currentPos[type]) return alert("Close existing trade first.");
             const amt = parseFloat(document.getElementById(type + '-amt').value);
-            if(!amt || amt <= 0 || amt > _balance) return alert("Invalid amount or insufficient balance.");
+            if(!amt || amt <= 0 || amt > _balance) return alert("Invalid amount.");
 
             _balance -= amt;
-            const lev = (type === 'futures') ? _leverage : 1;
+            _currentPos[type] = { entry: _livePrice, margin: amt, size: (amt * (type==='futures'?_leverage:1)) / _livePrice, side: side };
             
-            // Store the trade
-            _currentPos[type] = { entry: _livePrice, margin: amt, size: (amt * lev) / _livePrice, side: side };
-            
-            // Show the PnL Card
             document.getElementById(type + '-pos').style.display = 'block';
             if(type === 'futures') document.getElementById('fut-tag').innerText = `BTC ${side.toUpperCase()} ${_leverage}x`;
             
             Terminal.refreshUI();
-            alert(`Order Filled! Entry: $${_livePrice.toLocaleString()}`);
         },
 
         closeTrade: (type) => {
             const pos = _currentPos[type];
             let pnl = (_livePrice - pos.entry) * pos.size;
-            if(pos.side === 'short') pnl = (pos.entry - _livePrice) * pos.size; // Short logic
+            if(pos.side === 'short') pnl = (pos.entry - _livePrice) * pos.size;
             
             _balance += (pos.margin + pnl);
-            _currentPos[type] = null; // Delete the trade
-            
-            document.getElementById(type + '-pos').style.display = 'none'; // Hide Card
+            _currentPos[type] = null;
+            document.getElementById(type + '-pos').style.display = 'none';
             Terminal.refreshUI();
-            alert(`Trade Closed. Total PnL: $${pnl.toFixed(2)}`);
         },
 
         refreshUI: () => {
-            const formatted = _balance.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
+            const formatted = _balance.toLocaleString(undefined, {minimumFractionDigits: 2});
             document.getElementById('bal-spot').innerText = formatted;
             document.getElementById('bal-fut').innerText = formatted;
             
-            // Update live PnL text
             ['spot', 'futures'].forEach(type => {
                 if(_currentPos[type]) {
                     const pos = _currentPos[type];
                     let pnl = (_livePrice - pos.entry) * pos.size;
                     if(pos.side === 'short') pnl = (pos.entry - _livePrice) * pos.size;
-                    
                     const el = document.getElementById(type + '-pnl-val');
                     el.innerText = (pnl >= 0 ? '+' : '') + '$' + pnl.toFixed(2);
                     el.style.color = pnl >= 0 ? 'var(--oyyy-green)' : 'var(--oyyy-red)';
@@ -228,49 +221,62 @@ const Terminal = (() => {
             });
         },
 
-        // CLOUD & BOT BRIDGE
-        submitToCloud: () => {
-            const amt = parseFloat(document.getElementById('req-amt').value);
+        // FIXED BOT BRIDGE
+        submitToCloud: async () => {
+            const btn = document.getElementById('cloud-submit-btn');
+            const amt = document.getElementById('req-amt').value;
             const tgid = document.getElementById('req-tg').value;
             
-            if(!amt || !tgid) return alert("Please fill in both fields.");
+            if(!amt || !tgid) return alert("Fill all fields.");
 
-            // 1. Push to Firebase Database
-            db.ref('requests').push({
-                type: _modalType, 
-                amount: amt, 
-                tgid: tgid, 
-                status: 'Pending', 
-                time: Date.now()
-            }).then(() => {
-                // 2. Ping Admin via Telegram API
-                const msg = `🚨 *INCOMING OLDYPRO REQUEST*\n\n` +
-                            `📦 *Type:* ${_modalType}\n` +
-                            `💰 *Amount:* $${amt.toLocaleString()}\n` +
-                            `👤 *User TG:* ${tgid}\n\n` +
-                            `Check Firebase to approve.`;
+            btn.disabled = true;
+            btn.innerText = "Sending...";
+
+            try {
+                // 1. Firebase Save
+                await db.ref('requests').push({
+                    type: _modalType, 
+                    amount: amt, 
+                    tgid: tgid, 
+                    status: 'Pending', 
+                    time: Date.now()
+                });
+
+                // 2. Telegram Alert
+                const msg = `🚨 <b>NEW OLDYPRO REQUEST</b>\n\n` +
+                            `<b>Type:</b> ${_modalType}\n` +
+                            `<b>Amount:</b> $${amt}\n` +
+                            `<b>User TG:</b> ${tgid}\n\n` +
+                            `<i>Check Admin Panel to approve.</i>`;
                             
-                fetch(`https://api.telegram.org/bot${TG_BOT_TOKEN}/sendMessage`, {
+                const response = await fetch(`https://api.telegram.org/bot${TG_CONFIG.TOKEN}/sendMessage`, {
                     method: 'POST', 
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ chat_id: TG_ADMIN_ID, text: msg, parse_mode: 'Markdown' })
-                }).then(() => {
-                    Terminal.closeModal();
-                    alert("Success! The Admin has been notified.");
-                    document.getElementById('req-amt').value = ''; // Clear inputs
-                    document.getElementById('req-tg').value = '';
-                }).catch(err => {
-                    console.error("Telegram Error: ", err);
-                    alert("Database updated, but Telegram bot failed.");
+                    body: JSON.stringify({ 
+                        chat_id: TG_CONFIG.ADMIN_ID, 
+                        text: msg, 
+                        parse_mode: 'HTML' 
+                    })
                 });
-                
-            }).catch(error => {
-                console.error("Firebase Error: ", error);
-                alert("Cloud Error: Could not reach the database.");
-            });
+
+                if(response.ok) {
+                    alert("✅ Request sent to Admin!");
+                    Terminal.closeModal();
+                    document.getElementById('req-amt').value = '';
+                    document.getElementById('req-tg').value = '';
+                } else {
+                    throw new Error("Bot Error");
+                }
+
+            } catch (err) {
+                console.error(err);
+                alert("⚠️ Data saved, but Telegram failed. Admin will see it in Firebase.");
+            } finally {
+                btn.disabled = false;
+                btn.innerText = "Send to Cloud";
+            }
         },
 
-        // LIVE PRICE FETCH (From Binance)
         tick: async () => {
             try {
                 const r = await fetch('https://api.binance.com/api/v3/ticker/price?symbol=BTCUSDT');
@@ -278,17 +284,14 @@ const Terminal = (() => {
                 _livePrice = parseFloat(d.price);
                 document.getElementById('price-ticker').innerText = `BTC $${_livePrice.toLocaleString()}`;
                 Terminal.refreshUI();
-            } catch(e) {
-                console.log("Waiting for price update...");
-            }
+            } catch(e) {}
         }
     };
 })();
 
-// AUTO-START WHEN PAGE LOADS
 window.onload = () => {
-    Terminal.switchScreen('spot'); // Show Spot screen immediately
-    setInterval(Terminal.tick, 2000); // Start fetching price every 2 seconds
+    Terminal.switchScreen('spot');
+    setInterval(Terminal.tick, 2000);
 };
 </script>
 </body>
