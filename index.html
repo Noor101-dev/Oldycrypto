@@ -3,214 +3,239 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Oldypro | Terminal</title>
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;700;800&family=JetBrains+Mono:wght@600&display=swap" rel="stylesheet">
-    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-auth-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-database-compat.js"></script>
-    <script type="text/javascript" src="https://s3.tradingview.com/tv.js"></script>
+    <title>Oldypro | Professional Trading Terminal</title>
     <style>
-        :root { --oyyy-bg: #ffffff; --oyyy-surface: #f8fafc; --oyyy-border: #e2e8f0; --oyyy-accent: #3b82f6; --oyyy-green: #10b981; --oyyy-red: #ef4444; --oyyy-text: #1e293b; --oyyy-muted: #64748b; }
-        body, html { margin: 0; padding: 0; font-family: 'Plus Jakarta Sans', sans-serif; background: var(--oyyy-bg); color: var(--oyyy-text); height: 100vh; overflow: hidden; }
-        #auth-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: white; z-index: 2000; display: flex; align-items: center; justify-content: center; }
-        .auth-box { width: 340px; padding: 40px; text-align: center; }
-        nav { height: 64px; padding: 0 24px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--oyyy-border); background: white; z-index: 100; position: relative; }
-        .header-left { display: flex; align-items: center; gap: 20px; }
-        .wallet-pill { background: var(--oyyy-surface); padding: 6px 12px; border-radius: 20px; border: 1px solid var(--oyyy-border); font-weight: 800; font-size: 0.85rem; }
-        .logo { font-size: 1.4rem; font-weight: 800; cursor: pointer; color: var(--oyyy-text); }
-        .nav-links { display: flex; gap: 8px; background: var(--oyyy-surface); padding: 5px; border-radius: 10px; }
-        .nav-btn { padding: 8px 16px; border-radius: 7px; cursor: pointer; font-size: 0.8rem; font-weight: 700; color: var(--oyyy-muted); }
-        .nav-btn.active { background: white; color: var(--oyyy-accent); box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
-        .screen { display: none; height: calc(100vh - 64px); grid-template-columns: 1fr 340px; }
-        .screen.active { display: grid; }
-        .sidebar { border-left: 1px solid var(--oyyy-border); padding: 20px; display: flex; flex-direction: column; gap: 20px; background: white; overflow-y: auto; }
-        .chart-box { background: var(--oyyy-surface); padding: 12px; }
-        .oyyy-input { background: var(--oyyy-surface); border: 1px solid var(--oyyy-border); padding: 12px; border-radius: 8px; width: 100%; box-sizing: border-box; font-family: 'JetBrains Mono'; margin-bottom: 10px; font-weight: 600; outline: none; }
-        .btn-action { padding: 16px; border-radius: 8px; border: none; font-weight: 800; cursor: pointer; color: white; width: 100%; transition: 0.3s; }
-        .pnl-card { background: white; border: 1px solid var(--oyyy-border); border-radius: 12px; padding: 16px; margin-bottom: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.02); }
-        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 1000; align-items: center; justify-content: center; backdrop-filter: blur(4px); }
-        .modal-box { background: white; padding: 30px; border-radius: 15px; width: 320px; position: relative; }
-        .mail-badge { position: absolute; top: -5px; right: -5px; background: var(--oyyy-red); color: white; font-size: 0.6rem; padding: 2px 6px; border-radius: 10px; font-weight: 800; }
-        @media (max-width: 768px) { .screen { grid-template-columns: 1fr; } .sidebar { border-left: none; border-top: 1px solid var(--oyyy-border); } }
+        :root {
+            --bg-dark: #0b0e11;
+            --card-bg: #1e2329;
+            --text-main: #eaecef;
+            --green: #00c076;
+            --red: #cf304a;
+            --accent: #fcd535;
+            --border: #333;
+        }
+
+        body {
+            background-color: var(--bg-dark);
+            color: var(--text-main);
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            margin: 0;
+            padding: 20px;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding-bottom: 20px;
+            border-bottom: 1px solid var(--border);
+            margin-bottom: 30px;
+        }
+
+        .logo { color: var(--accent); font-size: 1.5rem; font-weight: bold; }
+
+        .dashboard-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: 1fr 380px;
+            gap: 25px;
+        }
+
+        .oldy-card {
+            background: var(--card-bg);
+            border-radius: 12px;
+            padding: 24px;
+            border: 1px solid var(--border);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+        }
+
+        h2 { font-size: 1.1rem; margin-top: 0; margin-bottom: 20px; color: #848e9c; text-transform: uppercase; letter-spacing: 1px; }
+
+        /* Transfer Section */
+        .transfer-row { margin-bottom: 15px; }
+        label { display: block; font-size: 0.75rem; margin-bottom: 8px; color: #848e9c; }
+        select, input {
+            width: 100%;
+            background: var(--bg-dark);
+            border: 1px solid var(--border);
+            color: white;
+            padding: 12px;
+            border-radius: 6px;
+            font-size: 0.9rem;
+            box-sizing: border-box;
+        }
+
+        .confirm-btn {
+            width: 100%;
+            background: var(--accent);
+            color: black;
+            border: none;
+            padding: 14px;
+            font-weight: bold;
+            cursor: pointer;
+            border-radius: 6px;
+            margin-top: 10px;
+            transition: opacity 0.2s;
+        }
+
+        .confirm-btn:hover { opacity: 0.9; }
+
+        /* Trade Table */
+        table { width: 100%; border-collapse: collapse; }
+        th { text-align: left; font-size: 0.7rem; color: #848e9c; padding: 12px 8px; text-transform: uppercase; }
+        td { padding: 16px 8px; border-top: 1px solid var(--border); font-size: 0.95rem; }
+
+        .pnl-plus { color: var(--green); font-weight: bold; }
+        .pnl-minus { color: var(--red); font-weight: bold; }
+
+        .exit-btn {
+            background: rgba(207, 48, 74, 0.1);
+            border: 1px solid var(--red);
+            color: var(--red);
+            padding: 6px 12px;
+            cursor: pointer;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            transition: all 0.2s;
+        }
+
+        .exit-btn:hover { background: var(--red); color: white; }
+
+        .live-tag {
+            background: rgba(0, 192, 118, 0.1);
+            color: var(--green);
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 0.7rem;
+            margin-left: 8px;
+        }
     </style>
 </head>
 <body>
 
-<div id="auth-overlay">
-    <div class="auth-box">
-        <div style="font-size: 2.5rem; font-weight: 800; margin-bottom: 10px;">Oldypro</div>
-        <input type="email" id="auth-email" class="oyyy-input" placeholder="Email">
-        <input type="password" id="auth-pass" class="oyyy-input" placeholder="Password">
-        <button onclick="Auth.login()" class="btn-action" style="background:var(--oyyy-accent); margin-bottom:10px;">Login</button>
-        <button onclick="Auth.signUp()" class="btn-action" style="background:var(--oyyy-surface); color:var(--oyyy-text);">Create Account</button>
-        <p id="auth-msg" style="color:var(--oyyy-red); font-size:0.8rem; margin-top:15px;"></p>
-    </div>
+<div class="header">
+    <div class="logo">OLDYPRO <span style="color:white; font-size: 0.8rem; font-weight: normal;">Terminal v1.0</span></div>
+    <div id="connection-status"><span class="live-tag">● BINANCE LIVE</span></div>
 </div>
 
-<nav>
-    <div class="header-left">
-        <div class="logo" onclick="Terminal.switchScreen('spot')">Oldypro</div>
-        <div class="wallet-pill">Bal: <span id="nav-bal">$0.00</span></div>
-        <div style="position:relative; cursor:pointer;" onclick="Terminal.toggleMail()">
-            <span style="font-size:1.4rem;">📬</span>
-            <span id="mail-count" class="mail-badge" style="display:none">0</span>
+<div class="dashboard-container">
+    
+    <div class="oldy-card">
+        <h2>Active Positions</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Symbol</th>
+                    <th>Entry Price</th>
+                    <th>Mark Price</th>
+                    <th>Unrealized PnL</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>
+                        <strong>BTC/USDT</strong><br>
+                        <small style="color:var(--green)">Isolated 10x</small>
+                    </td>
+                    <td>64,250.00</td>
+                    <td id="btc-price" style="font-family: monospace;">---</td>
+                    <td id="btc-pnl" style="font-family: monospace;">$0.00</td>
+                    <td><button class="exit-btn" onclick="exitTrade('BTCUSDT')">Exit Trade</button></td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <div class="oldy-card">
+        <h2>Transfer Funds</h2>
+        <div class="transfer-row">
+            <label>From</label>
+            <select id="fromWallet">
+                <option value="spot">Spot Wallet</option>
+                <option value="futures">Futures Wallet</option>
+                <option value="funding">Funding Wallet</option>
+            </select>
         </div>
-    </div>
-    <div class="nav-links">
-        <div id="tab-spot" class="nav-btn active" onclick="Terminal.switchScreen('spot')">Spot</div>
-        <div id="tab-futures" class="nav-btn" onclick="Terminal.switchScreen('futures')">Futures</div>
-    </div>
-    <div style="display:flex; align-items:center; gap:12px;">
-        <button onclick="Terminal.openModal()" style="background:var(--oyyy-green); color:white; border:none; padding:8px 14px; border-radius:8px; font-weight:700; cursor:pointer;">Deposit</button>
-        <button onclick="Auth.logout()" style="background:none; border:none; color:var(--oyyy-muted); cursor:pointer; font-size:0.7rem;">LOGOUT</button>
-    </div>
-</nav>
+        
+        <div style="text-align: center; margin: -5px 0 10px 0; color: var(--accent);">⇅</div>
 
-<div id="screen-spot" class="screen active">
-    <div class="chart-box"><div id="tv_spot" style="height:100%"></div></div>
-    <div class="sidebar">
-        <h3>Spot</h3>
-        <input type="number" id="spot-amt" class="oyyy-input" placeholder="Amount (USDT)">
-        <button class="btn-action" style="background:var(--oyyy-green)" onclick="Terminal.trade('spot', 'buy')">Buy BTC</button>
-    </div>
-</div>
-
-<div id="screen-futures" class="screen">
-    <div class="chart-box"><div id="tv_futures" style="height:100%"></div></div>
-    <div class="sidebar">
-        <h3>Futures</h3>
-        <label style="font-size:0.7rem; font-weight:800">LEVERAGE: <span id="lev-ui" style="color:var(--oyyy-accent)">20x</span></label>
-        <input type="range" min="1" max="125" value="20" oninput="Terminal.updateLev(this.value)" style="width:100%; margin-bottom:15px;">
-        <input type="number" id="fut-amt" class="oyyy-input" placeholder="Margin (USDT)">
-        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
-            <button class="btn-action" style="background:var(--oyyy-green)" onclick="Terminal.trade('futures', 'long')">Long</button>
-            <button class="btn-action" style="background:var(--oyyy-red)" onclick="Terminal.trade('futures', 'short')">Short</button>
+        <div class="transfer-row">
+            <label>To</label>
+            <select id="toWallet">
+                <option value="futures">Futures Wallet</option>
+                <option value="spot">Spot Wallet</option>
+                <option value="funding">Funding Wallet</option>
+            </select>
         </div>
-    </div>
-</div>
 
-<div id="req-modal" class="modal">
-    <div class="modal-box">
-        <h3>Deposit Request</h3>
-        <input type="number" id="req-amt" class="oyyy-input" placeholder="Amount (USDT)">
-        <input type="text" id="req-tg" class="oyyy-input" placeholder="Telegram @Username">
-        <button id="submit-btn" onclick="Terminal.submitToCloud()" class="btn-action" style="background:var(--oyyy-accent)">Submit Request</button>
-        <button onclick="Terminal.closeModal()" style="width:100%; border:none; background:none; margin-top:10px; cursor:pointer; color:var(--oyyy-muted);">Cancel</button>
-    </div>
-</div>
+        <div class="transfer-row">
+            <label>Amount (USDT)</label>
+            <input type="number" id="transferAmount" placeholder="0.00" step="0.01">
+        </div>
 
-<div id="mail-modal" class="modal">
-    <div class="modal-box">
-        <h3>Mailbox</h3>
-        <div id="mail-list" style="max-height:300px; overflow-y:auto;"></div>
-        <button onclick="Terminal.toggleMail()" class="btn-action" style="background:var(--oyyy-text); margin-top:15px;">Close</button>
+        <button class="confirm-btn" onclick="processTransfer()">Confirm Transfer</button>
     </div>
+
 </div>
 
 <script>
-const firebaseConfig = {
-    apiKey: "AIzaSyBQ1OFnuMKwshadRL3wbO9g0ibkA4Tj5I8",
-    authDomain: "oldycrypto.firebaseapp.com",
-    databaseURL: "https://oldycrypto-default-rtdb.firebaseio.com",
-    projectId: "oldycrypto",
-    storageBucket: "oldycrypto.firebasestorage.app",
-    messagingSenderId: "921965725357",
-    appId: "1:921965725357:web:901122d49e1217ea886824"
-};
+    // --- WEBSOCKET CONFIGURATION ---
+    const btcPriceEl = document.getElementById('btc-price');
+    const btcPnlEl = document.getElementById('btc-pnl');
+    
+    // User Data (In a real app, this comes from your database)
+    const entryPrice = 64250.00;
+    const positionSize = 0.05; // 0.05 BTC
 
-const TG_CONFIG = {
-    TOKEN: "8706675125:AAGsw0q6IJFuzKg0DD17-8ThkMAmyvdyubg",
-    ADMIN_ID: "7647536292"
-};
+    // Connect to Binance Public WebSocket (No API key needed for market data)
+    const socket = new WebSocket('wss://stream.binance.com:9443/ws/btcusdt@ticker');
 
-firebase.initializeApp(firebaseConfig);
-const db = firebase.database();
-const auth = firebase.auth();
+    socket.onmessage = (event) => {
+        const data = JSON.parse(event.data);
+        const currentPrice = parseFloat(data.c);
 
-const Auth = {
-    login: () => auth.signInWithEmailAndPassword(document.getElementById('auth-email').value, document.getElementById('auth-pass').value).catch(e => document.getElementById('auth-msg').innerText = e.message),
-    signUp: async () => {
-        try {
-            const res = await auth.createUserWithEmailAndPassword(document.getElementById('auth-email').value, document.getElementById('auth-pass').value);
-            await db.ref('users/' + res.user.uid).set({ balance: 0 });
-        } catch(e) { document.getElementById('auth-msg').innerText = e.message; }
-    },
-    logout: () => auth.signOut().then(() => location.reload())
-};
+        // Update Live Price
+        btcPriceEl.innerText = currentPrice.toLocaleString(undefined, {minimumFractionDigits: 2});
 
-auth.onAuthStateChanged(user => {
-    if(user) { document.getElementById('auth-overlay').style.display='none'; Terminal.init(user.uid); }
-    else { document.getElementById('auth-overlay').style.display='flex'; }
-});
+        // Calculate PnL: (Current - Entry) * Size
+        const pnl = (currentPrice - entryPrice) * positionSize;
+        const pnlPercent = ((currentPrice - entryPrice) / entryPrice) * 100;
 
-const Terminal = (() => {
-    let _uid, _bal = 0, _lev = 20;
-    return {
-        init: (u) => {
-            _uid = u;
-            Terminal.switchScreen('spot');
-            db.ref('users/' + u + '/balance').on('value', snap => {
-                _bal = snap.val() || 0;
-                document.getElementById('nav-bal').innerText = `$${_bal.toFixed(2)}`;
-            });
-            db.ref('notifications/' + u).on('value', snap => {
-                const list = document.getElementById('mail-list');
-                const badge = document.getElementById('mail-count');
-                const data = snap.val();
-                list.innerHTML = "";
-                if(!data) { list.innerHTML = "No messages."; return; }
-                let unread = 0;
-                Object.keys(data).reverse().forEach(key => {
-                    const m = data[key]; if(!m.read) unread++;
-                    const card = document.createElement('div'); card.className = "pnl-card";
-                    card.style.borderLeft = m.type === 'reject' ? "4px solid red" : "4px solid green";
-                    card.innerHTML = `<div style="font-size:0.8rem;">${m.msg}</div><div style="font-size:0.6rem; color:gray;">${m.time}</div>`;
-                    list.appendChild(card);
-                });
-                badge.innerText = unread; badge.style.display = unread > 0 ? "block" : "none";
-            });
-        },
-        switchScreen: (s) => {
-            document.querySelectorAll('.screen').forEach(e => e.classList.remove('active'));
-            document.querySelectorAll('.nav-btn').forEach(e => e.classList.remove('active'));
-            document.getElementById('screen-'+s).classList.add('active');
-            document.getElementById('tab-'+s).classList.add('active');
-            new TradingView.widget({ "autosize": true, "symbol": "BINANCE:BTCUSDT", "interval": "1", "theme": "light", "container_id": "tv_"+s });
-        },
-        updateLev: (v) => { _lev = v; document.getElementById('lev-ui').innerText = v + 'x'; },
-        openModal: () => document.getElementById('req-modal').style.display='flex',
-        closeModal: () => document.getElementById('req-modal').style.display='none',
-        toggleMail: () => { 
-            const m = document.getElementById('mail-modal'); m.style.display = m.style.display === 'flex' ? 'none' : 'flex';
-            if(m.style.display === 'none') db.ref('notifications/' + _uid).once('value', snap => { snap.forEach(c => c.ref.update({ read: true })); });
-        },
-        submitToCloud: async () => {
-            const btn = document.getElementById('submit-btn'); const amt = document.getElementById('req-amt').value; const tgid = document.getElementById('req-tg').value;
-            if(!amt || !tgid) return alert("Fill all fields");
-            btn.disabled = true; btn.innerText = "Sending...";
-            const reqRef = db.ref('requests').push(); const reqKey = reqRef.key;
-            await reqRef.set({ uid: _uid, amount: amt, tgid: tgid, status: 'Pending', time: new Date().toLocaleString() });
-            const payload = {
-                chat_id: TG_CONFIG.ADMIN_ID,
-                text: `<b>🚨 DEPOSIT REQUEST</b>\n\nUser: @${tgid}\nAmt: <b>$${amt}</b>\nUID: <code>${_uid}</code>`,
-                parse_mode: 'HTML',
-                reply_markup: { inline_keyboard: [[{ text: "✅ Approve", callback_data: `approve_${_uid}_${amt}_${reqKey}` }, { text: "❌ Reject", callback_data: `reject_${_uid}_${amt}_${reqKey}` }]] }
-            };
-            try {
-                const res = await fetch(`https://api.telegram.org/bot${TG_CONFIG.TOKEN}/sendMessage`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
-                const data = await res.json();
-                if(data.ok) alert("Sent to Admin!"); else alert("Error: " + data.description);
-            } catch (e) { alert("Network error."); }
-            btn.disabled = false; btn.innerText = "Submit Request"; Terminal.closeModal();
-        },
-        trade: (type, side) => {
-            const amt = parseFloat(document.getElementById(type+'-amt').value);
-            if(!amt || amt > _bal) return alert("Insufficient Balance");
-            db.ref('users/' + _uid + '/balance').transaction(c => c - amt);
-            alert(`${side.toUpperCase()} Order Placed!`);
-        }
+        // Update UI styling based on profit/loss
+        btcPnlEl.innerText = (pnl >= 0 ? '+$' : '-$') + Math.abs(pnl).toFixed(2) + ` (${pnlPercent.toFixed(2)}%)`;
+        btcPnlEl.className = pnl >= 0 ? 'pnl-plus' : 'pnl-minus';
     };
-})();
+
+    socket.onerror = (err) => {
+        console.error("WebSocket Error: ", err);
+        btcPriceEl.innerText = "Connection Error";
+    };
+
+    // --- INTERACTION LOGIC ---
+    function exitTrade(symbol) {
+        const finalPnl = btcPnlEl.innerText;
+        if(confirm(`Confirm Exit ${symbol} at current price?\nEstimated PnL: ${finalPnl}`)) {
+            alert(`Order Sent: Closing ${symbol} position.`);
+            // Backend integration: fetch('/api/trade/exit', { method: 'POST', ... })
+        }
+    }
+
+    function processTransfer() {
+        const amount = document.getElementById('transferAmount').value;
+        const from = document.getElementById('fromWallet').value;
+        const to = document.getElementById('toWallet').value;
+
+        if(!amount || amount <= 0) {
+            alert("Please enter a valid amount.");
+            return;
+        }
+
+        alert(`Transfer Request Submitted:\n${amount} USDT from ${from} to ${to}.`);
+        // Backend integration: fetch('/api/wallet/transfer', { method: 'POST', ... })
+    }
 </script>
+
 </body>
 </html>
