@@ -3,189 +3,222 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Oldypro | Terminal Finance</title>
+    <title>Oldypro | Professional Exchange Terminal</title>
     <style>
         :root {
-            --bg: #0b0e11;
-            --card: #1e2329;
-            --text: #eaecef;
-            --yellow: #fcd535;
-            --green: #00c076;
-            --red: #cf304a;
-            --border: #333;
+            --bg: #0b0e11; --card: #1e2329; --text: #eaecef;
+            --yellow: #fcd535; --green: #00c076; --red: #cf304a; --border: #333;
         }
 
-        body { background: var(--bg); color: var(--text); font-family: 'Inter', sans-serif; margin: 0; padding: 20px; }
-        .container { max-width: 1000px; margin: 0 auto; display: grid; grid-template-columns: 1fr 380px; gap: 25px; }
+        body { background: var(--bg); color: var(--text); font-family: 'Inter', sans-serif; margin: 0; padding: 10px; overflow-x: hidden; }
         
-        .card { 
-            background: var(--card); 
-            padding: 20px; 
-            border-radius: 12px; 
-            border: 1px solid var(--border); 
-            margin-bottom: 20px;
+        /* WALLET SYSTEM */
+        .wallet-bar { 
+            display: flex; background: var(--card); padding: 15px 25px; border-radius: 10px; 
+            margin-bottom: 10px; border: 1px solid var(--border); gap: 40px; align-items: center;
         }
+        .wallet-item { display: flex; flex-direction: column; }
+        .wallet-label { font-size: 10px; color: #848e9c; font-weight: bold; letter-spacing: 0.5px; }
+        .wallet-value { font-size: 16px; font-weight: bold; color: var(--yellow); margin-top: 4px; }
 
-        h2 { color: var(--yellow); margin-top: 0; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 1.5px; border-bottom: 1px solid #2b3139; padding-bottom: 12px; margin-bottom: 15px; }
-        label { display: block; margin-top: 15px; font-size: 11px; color: #848e9c; font-weight: bold; }
+        .terminal-grid { display: grid; grid-template-columns: 320px 1fr 320px; gap: 10px; height: calc(100vh - 100px); }
+        .card { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 18px; display: flex; flex-direction: column; box-shadow: 0 4px 10px rgba(0,0,0,0.3); }
         
-        input { 
-            width: 100%; background: var(--bg); border: 1px solid var(--border); 
-            color: white; padding: 12px; border-radius: 6px; box-sizing: border-box; 
-            margin-top: 5px; outline: none; border: 1px solid #333;
-        }
-        input:focus { border-color: var(--yellow); }
+        h2 { color: var(--yellow); font-size: 0.85rem; text-transform: uppercase; margin: 0 0 15px 0; border-bottom: 1px solid #2b3139; padding-bottom: 10px; }
 
-        .btn { 
-            width: 100%; border: none; padding: 14px; font-weight: bold; 
-            cursor: pointer; border-radius: 6px; margin-top: 20px; transition: 0.2s;
-        }
-        .btn-dep { background: var(--green); color: white; }
-        .btn-wd { background: var(--yellow); color: black; }
-        .btn:active { transform: scale(0.98); }
+        /* TRADING PANEL */
+        .trade-tabs { display: flex; gap: 10px; margin-bottom: 15px; }
+        .tab { flex: 1; padding: 12px; text-align: center; cursor: pointer; border-radius: 6px; font-weight: bold; font-size: 12px; border: 1px solid var(--border); transition: 0.2s; }
+        .tab-buy { background: rgba(0, 192, 118, 0.1); color: var(--green); border-color: var(--green); }
+        .tab-sell { background: rgba(207, 48, 74, 0.1); color: var(--red); border-color: var(--red); }
+        
+        input, select { width: 100%; background: var(--bg); border: 1px solid var(--border); color: white; padding: 12px; border-radius: 6px; margin-top: 6px; outline: none; box-sizing: border-box; }
+        label { display: block; font-size: 11px; color: #848e9c; margin-top: 12px; font-weight: bold; }
+        
+        .exec-btn { width: 100%; border: none; padding: 16px; font-weight: bold; border-radius: 6px; margin-top: 25px; cursor: pointer; transition: 0.2s; font-size: 14px; }
+        .btn-buy { background: var(--green); color: white; }
+        .btn-sell { background: var(--red); color: white; }
+        .exec-btn:active { transform: scale(0.97); }
 
-        /* Market Table */
-        table { width: 100%; border-collapse: collapse; }
-        th { text-align: left; font-size: 11px; color: #848e9c; padding: 10px 5px; }
-        td { padding: 15px 5px; border-top: 1px solid #2b3139; font-size: 0.9rem; }
-        .pnl-plus { color: var(--green); font-weight: bold; }
-        .pnl-minus { color: var(--red); font-weight: bold; }
-
-        /* Mailbox Styles */
-        #mailbox { min-height: 50px; }
-        .msg-item { 
-            padding: 12px; background: rgba(255,255,255,0.03); border-radius: 6px;
-            margin-bottom: 8px; font-size: 12px; display: flex; justify-content: space-between; align-items: center;
+        /* NOTIFICATION POPUP */
+        #status-msg { 
+            position: fixed; top: 20px; left: 50%; transform: translateX(-50%); 
+            padding: 15px 40px; border-radius: 50px; font-weight: bold; 
+            display: none; z-index: 9999; color: white; font-size: 14px;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.5);
         }
-        .status-accepted { color: var(--green); background: rgba(0, 192, 118, 0.1); padding: 2px 6px; border-radius: 4px; }
-        .status-rejected { color: var(--red); background: rgba(207, 48, 74, 0.1); padding: 2px 6px; border-radius: 4px; }
+
+        /* POSITIONS & MAILBOX */
+        table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+        th { text-align: left; color: #848e9c; padding: 10px 5px; font-size: 11px; }
+        td { padding: 15px 5px; border-top: 1px solid #2b3139; }
+        .msg-list { flex-grow: 1; overflow-y: auto; }
+        .msg-box { padding: 12px; background: rgba(255,255,255,0.03); border-radius: 6px; margin-bottom: 10px; border-left: 4px solid var(--yellow); font-size: 13px; display: flex; justify-content: space-between; }
+        .st-tag { font-weight: bold; font-size: 11px; text-transform: uppercase; }
     </style>
 </head>
 <body>
 
-<div class="container">
-    
-    <div>
-        <div class="card">
-            <h2>Active Trading Positions</h2>
+<div class="wallet-bar">
+    <div class="wallet-item">
+        <span class="wallet-label">TOTAL ASSETS (USDT)</span>
+        <span class="wallet-value" id="bal-total">$0.00</span>
+    </div>
+    <div class="wallet-item">
+        <span class="wallet-label">USDT BALANCE</span>
+        <span class="wallet-value" id="bal-usdt" style="color:white">0.00</span>
+    </div>
+    <div class="wallet-item">
+        <span class="wallet-label">BITCOIN (BTC)</span>
+        <span class="wallet-value" id="bal-btc" style="color:white">0.0000</span>
+    </div>
+    <div class="wallet-item">
+        <span class="wallet-label">ETHEREUM (ETH)</span>
+        <span class="wallet-value" id="bal-eth" style="color:white">0.0000</span>
+    </div>
+</div>
+
+<div class="terminal-grid">
+    <div class="card">
+        <h2>Place Order</h2>
+        <div class="trade-tabs">
+            <div class="tab tab-buy" id="tab-buy" onclick="setSide('BUY')">LONG</div>
+            <div class="tab tab-sell" id="tab-sell" onclick="setSide('SELL')" style="opacity:0.4;">SHORT</div>
+        </div>
+        
+        <label>LEVERAGE</label>
+        <select id="leverage">
+            <option value="1">1x (Spot)</option>
+            <option value="10">10x</option>
+            <option value="20">20x</option>
+            <option value="50">50x</option>
+        </select>
+
+        <label>ORDER AMOUNT (USDT)</label>
+        <input type="number" id="trade-amt" placeholder="0.00">
+        
+        <div style="margin-top:20px; background: rgba(0,0,0,0.2); padding: 10px; border-radius: 4px;">
+            <span style="color:#848e9c; font-size: 12px;">BTC Mark Price:</span> 
+            <span id="price-val" style="color:var(--yellow); font-weight:bold; float: right;">---</span>
+        </div>
+
+        <button id="exec-btn" class="exec-btn btn-buy" onclick="executeTrade()">EXECUTE BUY</button>
+    </div>
+
+    <div style="display: flex; flex-direction: column; gap: 10px;">
+        <div class="card" style="flex: 1.5;">
+            <h2>Active Positions</h2>
             <table>
                 <thead>
-                    <tr>
-                        <th>Symbol</th>
-                        <th>Entry Price</th>
-                        <th>Mark Price</th>
-                        <th>PnL (USDT)</th>
-                    </tr>
+                    <tr><th>Asset</th><th>Size</th><th>Entry</th><th>PnL</th></tr>
                 </thead>
-                <tbody>
-                    <tr>
-                        <td>BTC/USDT <small style="color:var(--green)">Long</small></td>
-                        <td>64250.00</td>
-                        <td id="live-price" style="font-family: monospace;">---</td>
-                        <td id="live-pnl" style="font-family: monospace;">0.00</td>
-                    </tr>
+                <tbody id="pos-body">
+                    <tr><td colspan="4" style="text-align:center; padding:40px; color:#444;">No Open Trades</td></tr>
                 </tbody>
             </table>
         </div>
-
-        <div class="card">
-            <h2>Notifications Mailbox</h2>
-            <div id="mailbox">
-                <div class="msg-item" style="color: #848e9c;">Syncing with Telegram...</div>
+        
+        <div class="card" style="flex: 1;">
+            <h2>Mailbox</h2>
+            <div id="mailbox" class="msg-list">
+                <div class="msg-box">Welcome to Oldypro Terminal. System Ready.</div>
             </div>
         </div>
     </div>
 
-    <div>
-        <div class="card">
-            <h2>Deposit Funds</h2>
-            <label>YOUR TELEGRAM USERNAME</label>
-            <input type="text" id="dep-tg" placeholder="@Gurnoor">
-            <label>AMOUNT (USDT)</label>
-            <input type="number" id="dep-amt" placeholder="0.00">
-            <button class="btn btn-dep" onclick="sendFinance('deposit')">Submit Deposit</button>
-        </div>
+    <div class="card">
+        <h2>Banking & Requests</h2>
+        <label>DEPOSIT (YOUR TELEGRAM ID)</label>
+        <input type="text" id="dep-tg" placeholder="@username">
+        <input type="number" id="dep-val" placeholder="Amount USDT" style="margin-top:10px;">
+        <button class="exec-btn btn-buy" style="padding:12px; margin-top:15px;" onclick="finance('deposit')">DEPOSIT REQUEST</button>
 
-        <div class="card">
-            <h2>Withdraw Assets</h2>
-            <label>BEP20 WALLET ADDRESS</label>
-            <input type="text" id="wd-addr" placeholder="0x...">
-            <label>AMOUNT (USDT)</label>
-            <input type="number" id="wd-amt" placeholder="0.00">
-            <button class="btn btn-wd" onclick="sendFinance('withdraw')">Submit Withdrawal</button>
-        </div>
+        <label style="margin-top:30px;">WITHDRAW (BEP20 WALLET)</label>
+        <input type="text" id="wd-addr" placeholder="0x...">
+        <input type="number" id="wd-val" placeholder="Amount USDT" style="margin-top:10px;">
+        <button class="exec-btn btn-sell" style="padding:12px; margin-top:15px;" onclick="finance('withdraw')">WITHDRAW REQUEST</button>
     </div>
-
 </div>
 
+<div id="status-msg"></div>
+
 <script>
-    // --- 1. LIVE MARKET DATA (WebSocket) ---
-    const entry = 64250.00;
-    const size = 0.05;
+    const GAS_URL = "https://script.google.com/macros/s/AKfycbwq8sQ_uVmvKHLGwHB2j5CgcRlfLsjeODcx8R4RvYGFBwnPaPcaDfMqgB6mQUlQadDL4Q/exec";
+    let side = 'BUY';
+
+    // 1. Live Price (WebSocket)
     const ws = new WebSocket('wss://stream.binance.com:9443/ws/btcusdt@ticker');
-    
     ws.onmessage = (e) => {
-        const data = JSON.parse(e.data);
-        const price = parseFloat(data.c);
-        const pnl = (price - entry) * size;
-        document.getElementById('live-price').innerText = price.toLocaleString(undefined, {minimumFractionDigits: 2});
-        const pnlEl = document.getElementById('live-pnl');
-        pnlEl.innerText = (pnl >= 0 ? '+' : '') + pnl.toFixed(2);
-        pnlEl.className = pnl >= 0 ? 'pnl-plus' : 'pnl-minus';
+        const d = JSON.parse(e.data);
+        document.getElementById('price-val').innerText = parseFloat(d.c).toFixed(2);
     };
 
-    // --- 2. GOOGLE SCRIPT & TELEGRAM LOGIC ---
-    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwq8sQ_uVmvKHLGwHB2j5CgcRlfLsjeODcx8R4RvYGFBwnPaPcaDfMqgB6mQUlQadDL4Q/exec";
+    // 2. UI Helper
+    function setSide(s) {
+        side = s;
+        document.getElementById('exec-btn').innerText = `EXECUTE ${side}`;
+        document.getElementById('exec-btn').className = s === 'BUY' ? 'exec-btn btn-buy' : 'exec-btn btn-sell';
+        document.getElementById('tab-buy').style.opacity = s === 'BUY' ? '1' : '0.4';
+        document.getElementById('tab-sell').style.opacity = s === 'SELL' ? '1' : '0.4';
+    }
 
-    async function sendFinance(type) {
+    function notify(text, color) {
+        const el = document.getElementById('status-msg');
+        el.innerText = text;
+        el.style.display = 'block';
+        el.style.background = color === 'green' ? '#00c076' : '#cf304a';
+        setTimeout(() => { el.style.display = 'none'; }, 4000);
+    }
+
+    // 3. Execution
+    async function executeTrade() {
+        const amt = document.getElementById('trade-amt').value;
+        if(!amt) return alert("Please enter amount");
+        notify("ORDER REQUEST HAS BEEN SENDED", 'green');
+        
+        await fetch(GAS_URL, { 
+            method: "POST", 
+            mode: "no-cors", 
+            body: JSON.stringify({ action: "trade", side, amt, tg: document.getElementById('dep-tg').value }) 
+        });
+    }
+
+    async function finance(type) {
+        const val = type === 'deposit' ? document.getElementById('dep-val').value : document.getElementById('wd-val').value;
+        const tg = document.getElementById('dep-tg').value;
+        if(!val || !tg) return alert("Fill all fields");
+
+        notify("REQUEST HAS BEEN SENDED", 'green');
+
         const payload = {
-            method: "request",
+            action: "request",
             type: type,
-            tg: document.getElementById('dep-tg').value,
-            address: document.getElementById('wd-addr').value,
-            amount: type === 'deposit' ? document.getElementById('dep-amt').value : document.getElementById('wd-amt').value
+            amount: val,
+            tg: tg,
+            address: document.getElementById('wd-addr').value
         };
 
-        if(!payload.amount || payload.amount <= 0) return alert("Please enter a valid amount.");
-
-        try {
-            // Using POST to trigger the doPost function in your GAS
-            await fetch(SCRIPT_URL, {
-                method: "POST",
-                mode: "no-cors",
-                body: JSON.stringify(payload)
-            });
-            alert("Request sent! Check your Telegram bot.");
-        } catch (err) {
-            console.error(err);
-            alert("Sent! (Server responded)");
-        }
+        await fetch(GAS_URL, { method: "POST", mode: "no-cors", body: JSON.stringify(payload) });
     }
 
-    // --- 3. MAILBOX UPDATER ---
-    async function updateMailbox() {
+    // 4. Mailbox Sync (Auto-refreshes every 10s)
+    async function syncMail() {
+        const tgUser = document.getElementById('dep-tg').value.replace('@', '');
+        if(!tgUser) return;
+        
         try {
-            const res = await fetch(SCRIPT_URL + "?action=getMail");
+            const res = await fetch(`${GAS_URL}?action=getMail&user=${tgUser}`);
             const data = await res.json();
             const box = document.getElementById('mailbox');
-            
-            if(data && data.length > 0) {
-                box.innerHTML = data.map(m => `
-                    <div class="msg-item">
-                        <span>${m.text}</span>
-                        <span class="status-${m.status.toLowerCase()}">${m.status}</span>
-                    </div>
-                `).join('');
-            } else {
-                box.innerHTML = '<div class="msg-item" style="color: #848e9c;">No active notifications.</div>';
+            if(data) {
+                box.innerHTML = `<div class="msg-box">
+                    <span>${data.text}</span>
+                    <span class="st-tag" style="color:${data.status === 'ACCEPTED' ? '#00c076' : '#cf304a'}">${data.status}</span>
+                </div>`;
             }
-        } catch (e) {
-            // Silence sync logs
-        }
+        } catch(e) {}
     }
-
-    // Poll for mailbox status every 8 seconds
-    setInterval(updateMailbox, 8000);
+    setInterval(syncMail, 10000);
 </script>
 
 </body>
