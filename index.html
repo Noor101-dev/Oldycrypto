@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Oldypro | Professional Trading Terminal</title>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;700;800&family=JetBrains+Mono:wght@600&display=swap" rel="stylesheet">
+    
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-database-compat.js"></script>
+    
+    <script type="text/javascript" src="https://s3.tradingview.com/tv.js"></script>
+
+    <style>
+        :root {
+            --oyyy-bg: #ffffff; --oyyy-surface: #f8fafc; --oyyy-border: #e2e8f0;
+            --oyyy-accent: #3b82f6; --oyyy-green: #10b981; --oyyy-red: #ef4444;
+            --oyyy-text: #1e293b; --oyyy-muted: #64748b;
+        }
+
+        body, html { margin: 0; padding: 0; font-family: 'Plus Jakarta Sans', sans-serif; background: var(--oyyy-bg); color: var(--oyyy-text); height: 100vh; overflow: hidden; }
+        
+        nav { height: 64px; padding: 0 24px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--oyyy-border); background: white; z-index: 100; position: relative; }
+        .logo { font-size: 1.4rem; font-weight: 800; cursor: pointer; color: var(--oyyy-text); }
+        
+        .nav-links { display: flex; gap: 8px; background: var(--oyyy-surface); padding: 5px; border-radius: 10px; }
+        .nav-btn { padding: 8px 16px; border-radius: 7px; cursor: pointer; font-size: 0.8rem; font-weight: 700; color: var(--oyyy-muted); transition: 0.2s; }
+        .nav-btn.active { background: white; color: var(--oyyy-accent); box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+
+        .screen { display: none; height: calc(100vh - 64px); grid-template-columns: 1fr 340px; }
+        .screen.active { display: grid; }
+
+        .sidebar { border-left: 1px solid var(--oyyy-border); padding: 20px; display: flex; flex-direction: column; gap: 20px; background: white; overflow-y: auto; }
+        .chart-box { background: var(--oyyy-surface); padding: 12px; }
+        
+        .oyyy-input { background: var(--oyyy-surface); border: 1px solid var(--oyyy-border); padding: 12px; border-radius: 8px; width: 100%; box-sizing: border-box; font-family: 'JetBrains Mono'; outline: none; margin-bottom: 10px; font-weight: 600; }
+        .btn-action { padding: 16px; border-radius: 8px; border: none; font-weight: 800; cursor: pointer; color: white; width: 100%; transition: 0.3s; }
+        .btn-action:active { transform: scale(0.98); }
+
+        .pnl-card { background: white; border: 1px solid var(--oyyy-border); border-radius: 12px; padding: 16px; border-left: 4px solid var(--oyyy-accent); box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); }
+        .pnl-val { font-family: 'JetBrains Mono'; font-size: 1.5rem; font-weight: 700; margin: 5px 0; }
+        
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 1000; align-items: center; justify-content: center; backdrop-filter: blur(4px); }
+        .modal-box { background: white; padding: 30px; border-radius: 15px; width: 320px; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1); }
+    </style>
+</head>
+<body>
+
+<nav>
+    <div class="logo">Oldypro</div>
+    <div class="nav-links">
+        <div id="tab-spot" class="nav-btn active" onclick="Terminal.switchScreen('spot')">Spot</div>
+        <div id="tab-futures" class="nav-btn" onclick="Terminal.switchScreen('futures')">Futures</div>
+    </div>
+    <div style="display:flex; align-items:center; gap:12px;">
+        <div id="price-ticker" style="font-family:'JetBrains Mono'; font-weight:800; color:var(--oyyy-accent)">$0.00</div>
+        <button onclick="Terminal.openModal('Deposit')" style="background:var(--oyyy-green); color:white; border:none; padding:8px 14px; border-radius:8px; font-weight:700; cursor:pointer;">Deposit</button>
+    </div>
+</nav>
+
+<div id="screen-spot" class="screen active">
+    <div class="chart-box"><div id="tv_spot" style="height:100%"></div></div>
+    <div class="sidebar">
+        <h3>Spot Trading</h3>
+        <input type="number" id="spot-amt" class="oyyy-input" placeholder="Amount (USDT)">
+        <button class="btn-action" style="background:var(--oyyy-green)" onclick="Terminal.trade('spot', 'buy')">Buy BTC</button>
+        
+        <div id="spot-pos" style="display:none; margin-top:20px;">
+            <div class="pnl-card">
+                <div style="font-size:0.7rem; font-weight:800; color:var(--oyyy-muted)">BTC SPOT HOLDING</div>
+                <div id="spot-pnl-val" class="pnl-val">$0.00</div>
+                <button onclick="Terminal.closeTrade('spot')" style="width:100%; padding:8px; background:#fff1f2; color:var(--oyyy-red); border:1px solid #fecaca; border-radius:6px; cursor:pointer; font-weight:700; margin-top:10px;">Sell & Close</button>
+            </div>
+        </div>
+
+        <div style="margin-top:auto; font-weight:800; border-top:1px solid var(--oyyy-border); padding-top:15px;">
+            <span style="color:var(--oyyy-muted)">Wallet:</span> <span id="bal-spot">5,000.00</span> USDT
+        </div>
+    </div>
+</div>
+
+<div id="screen-futures" class="screen">
+    <div class="chart-box"><div id="tv_futures" style="height:100%"></div></div>
+    <div class="sidebar">
+        <h3>Futures</h3>
+        <label style="font-size:0.7rem; font-weight:800">LEVERAGE: <span id="lev-ui" style="color:var(--oyyy-accent)">20x</span></label>
+        <input type="range" min="1" max="125" value="20" oninput="Terminal.updateLev(this.value)" style="width:100%; accent-color:var(--oyyy-accent); margin-bottom:15px;">
+        <input type="number" id="fut-amt" class="oyyy-input" placeholder="Margin (USDT)">
+        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
+            <button class="btn-action" style="background:var(--oyyy-green)" onclick="Terminal.trade('futures', 'long')">Long</button>
+            <button class="btn-action" style="background:var(--oyyy-red)" onclick="Terminal.trade('futures', 'short')">Short</button>
+        </div>
+
+        <div id="fut-pos" style="display:none; margin-top:20px;">
+            <div class="pnl-card">
+                <div id="fut-tag" style="font-size:0.7rem; font-weight:800; color:var(--oyyy-muted)">BTC LONG 20x</div>
+                <div id="fut-pnl-val" class="pnl-val">$0.00</div>
+                <button onclick="Terminal.closeTrade('futures')" style="width:100%; padding:8px; background:#fff1f2; color:var(--oyyy-red); border:1px solid #fecaca; border-radius:6px; cursor:pointer; font-weight:700; margin-top:10px;">Close Position</button>
+            </div>
+        </div>
+
+        <div style="margin-top:auto; font-weight:800; border-top:1px solid var(--oyyy-border); padding-top:15px;">
+            <span style="color:var(--oyyy-muted)">Wallet:</span> <span id="bal-fut">5,000.00</span> USDT
+        </div>
+    </div>
+</div>
+
+<div id="req-modal" class="modal">
+    <div class="modal-box">
+        <h3 id="modal-title">Deposit Funds</h3>
+        <p style="font-size: 0.8rem; color: var(--oyyy-muted); margin-top: -10px;">Request will be sent to Admin Vault.</p>
+        <input type="number" id="req-amt" class="oyyy-input" placeholder="Amount (USDT)">
+        <input type="text" id="req-tg" class="oyyy-input" placeholder="Your Telegram ID (e.g., @user)">
+        <button onclick="Terminal.submitToCloud()" class="btn-action" style="background:var(--oyyy-accent); margin-top:10px;">Send to Cloud</button>
+        <button onclick="Terminal.closeModal()" style="width:100%; border:none; background:none; margin-top:10px; cursor:pointer; color:var(--oyyy-muted); font-weight: 700;">Cancel</button>
+    </div>
+</div>
+
+<script>
+/**
+ * 🚀 OLDYPRO MASTER ENGINE
+ * Includes: Trading Logic, Firebase Database, Telegram API
+ */
+
+// 1. FIREBASE CONFIGURATION (Your exact keys)
+const firebaseConfig = {
+    apiKey: "AIzaSyBQ1OFnuMKwshadRL3wbO9g0ibkA4Tj5I8",
+    authDomain: "oldycrypto.firebaseapp.com",
+    databaseURL: "https://oldycrypto-default-rtdb.firebaseio.com",
+    projectId: "oldycrypto",
+    storageBucket: "oldycrypto.firebasestorage.app",
+    messagingSenderId: "921965725357",
+    appId: "1:921965725357:web:901122d49e1217ea886824"
+};
+
+// Start Firebase Engine
+firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
+
+// 2. TELEGRAM CONFIGURATION
+const TG_BOT_TOKEN = '8706675125:AAGsw0q6IJFuzKg0DD17-8ThkMAmyvdyubg';
+const TG_ADMIN_ID = '7647536292';
+
+const Terminal = (() => {
+    // SYSTEM MEMORY (Variables)
+    let _balance = 5000; // Starting fake money
+    let _livePrice = 0;
+    let _leverage = 20;
+    let _currentPos = { spot: null, futures: null };
+    let _modalType = 'Deposit';
+
+    return {
+        // UI FUNCTIONS
+        switchScreen: (s) => {
+            document.querySelectorAll('.screen').forEach(el => el.style.display = 'none');
+            document.querySelectorAll('.nav-btn').forEach(el => el.classList.remove('active'));
+            document.getElementById('screen-' + s).style.display = 'grid';
+            document.getElementById('tab-' + s).classList.add('active');
+            
+            // Load Charts
+            new TradingView.widget({ "autosize": true, "symbol": "BINANCE:BTCUSDT", "interval": "15", "theme": "light", "container_id": "tv_" + s });
+        },
+        
+        updateLev: (v) => { 
+            _leverage = v; 
+            document.getElementById('lev-ui').innerText = v + 'x'; 
+        },
+
+        openModal: (type) => { 
+            _modalType = type; 
+            document.getElementById('modal-title').innerText = type + ' Funds'; 
+            document.getElementById('req-modal').style.display = 'flex'; 
+        },
+        
+        closeModal: () => { 
+            document.getElementById('req-modal').style.display = 'none'; 
+        },
+
+        // TRADING FUNCTIONS
+        trade: (type, side) => {
+            if(_currentPos[type]) return alert("Please close your current position first.");
+            const amt = parseFloat(document.getElementById(type + '-amt').value);
+            if(!amt || amt <= 0 || amt > _balance) return alert("Invalid amount or insufficient balance.");
+
+            _balance -= amt;
+            const lev = (type === 'futures') ? _leverage : 1;
+            
+            // Store the trade
+            _currentPos[type] = { entry: _livePrice, margin: amt, size: (amt * lev) / _livePrice, side: side };
+            
+            // Show the PnL Card
+            document.getElementById(type + '-pos').style.display = 'block';
+            if(type === 'futures') document.getElementById('fut-tag').innerText = `BTC ${side.toUpperCase()} ${_leverage}x`;
+            
+            Terminal.refreshUI();
+            alert(`Order Filled! Entry: $${_livePrice.toLocaleString()}`);
+        },
+
+        closeTrade: (type) => {
+            const pos = _currentPos[type];
+            let pnl = (_livePrice - pos.entry) * pos.size;
+            if(pos.side === 'short') pnl = (pos.entry - _livePrice) * pos.size; // Short logic
+            
+            _balance += (pos.margin + pnl);
+            _currentPos[type] = null; // Delete the trade
+            
+            document.getElementById(type + '-pos').style.display = 'none'; // Hide Card
+            Terminal.refreshUI();
+            alert(`Trade Closed. Total PnL: $${pnl.toFixed(2)}`);
+        },
+
+        refreshUI: () => {
+            const formatted = _balance.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
+            document.getElementById('bal-spot').innerText = formatted;
+            document.getElementById('bal-fut').innerText = formatted;
+            
+            // Update live PnL text
+            ['spot', 'futures'].forEach(type => {
+                if(_currentPos[type]) {
+                    const pos = _currentPos[type];
+                    let pnl = (_livePrice - pos.entry) * pos.size;
+                    if(pos.side === 'short') pnl = (pos.entry - _livePrice) * pos.size;
+                    
+                    const el = document.getElementById(type + '-pnl-val');
+                    el.innerText = (pnl >= 0 ? '+' : '') + '$' + pnl.toFixed(2);
+                    el.style.color = pnl >= 0 ? 'var(--oyyy-green)' : 'var(--oyyy-red)';
+                }
+            });
+        },
+
+        // CLOUD & BOT BRIDGE
+        submitToCloud: () => {
+            const amt = parseFloat(document.getElementById('req-amt').value);
+            const tgid = document.getElementById('req-tg').value;
+            
+            if(!amt || !tgid) return alert("Please fill in both fields.");
+
+            // 1. Push to Firebase Database
+            db.ref('requests').push({
+                type: _modalType, 
+                amount: amt, 
+                tgid: tgid, 
+                status: 'Pending', 
+                time: Date.now()
+            }).then(() => {
+                // 2. Ping Admin via Telegram API
+                const msg = `🚨 *INCOMING OLDYPRO REQUEST*\n\n` +
+                            `📦 *Type:* ${_modalType}\n` +
+                            `💰 *Amount:* $${amt.toLocaleString()}\n` +
+                            `👤 *User TG:* ${tgid}\n\n` +
+                            `Check Firebase to approve.`;
+                            
+                fetch(`https://api.telegram.org/bot${TG_BOT_TOKEN}/sendMessage`, {
+                    method: 'POST', 
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ chat_id: TG_ADMIN_ID, text: msg, parse_mode: 'Markdown' })
+                }).then(() => {
+                    Terminal.closeModal();
+                    alert("Success! The Admin has been notified.");
+                    document.getElementById('req-amt').value = ''; // Clear inputs
+                    document.getElementById('req-tg').value = '';
+                }).catch(err => {
+                    console.error("Telegram Error: ", err);
+                    alert("Database updated, but Telegram bot failed.");
+                });
+                
+            }).catch(error => {
+                console.error("Firebase Error: ", error);
+                alert("Cloud Error: Could not reach the database.");
+            });
+        },
+
+        // LIVE PRICE FETCH (From Binance)
+        tick: async () => {
+            try {
+                const r = await fetch('https://api.binance.com/api/v3/ticker/price?symbol=BTCUSDT');
+                const d = await r.json();
+                _livePrice = parseFloat(d.price);
+                document.getElementById('price-ticker').innerText = `BTC $${_livePrice.toLocaleString()}`;
+                Terminal.refreshUI();
+            } catch(e) {
+                console.log("Waiting for price update...");
+            }
+        }
+    };
+})();
+
+// AUTO-START WHEN PAGE LOADS
+window.onload = () => {
+    Terminal.switchScreen('spot'); // Show Spot screen immediately
+    setInterval(Terminal.tick, 2000); // Start fetching price every 2 seconds
+};
+</script>
+</body>
+</html>
