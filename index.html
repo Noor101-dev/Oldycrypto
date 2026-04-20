@@ -3,7 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Oldypro | Professional Exchange Terminal</title>
+    <title>Oldypro Ultimate | Pro Exchange Terminal</title>
+    
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
+
     <style>
         :root {
             --bg: #0b0e11; --card: #1e2329; --text: #eaecef;
@@ -12,214 +17,205 @@
 
         body { background: var(--bg); color: var(--text); font-family: 'Inter', sans-serif; margin: 0; padding: 10px; overflow-x: hidden; }
         
-        /* WALLET SYSTEM */
-        .wallet-bar { 
-            display: flex; background: var(--card); padding: 15px 25px; border-radius: 10px; 
-            margin-bottom: 10px; border: 1px solid var(--border); gap: 40px; align-items: center;
-        }
-        .wallet-item { display: flex; flex-direction: column; }
-        .wallet-label { font-size: 10px; color: #848e9c; font-weight: bold; letter-spacing: 0.5px; }
-        .wallet-value { font-size: 16px; font-weight: bold; color: var(--yellow); margin-top: 4px; }
-
-        .terminal-grid { display: grid; grid-template-columns: 320px 1fr 320px; gap: 10px; height: calc(100vh - 100px); }
-        .card { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 18px; display: flex; flex-direction: column; box-shadow: 0 4px 10px rgba(0,0,0,0.3); }
+        #auth-overlay { position: fixed; inset: 0; background: var(--bg); z-index: 10000; display: flex; align-items: center; justify-content: center; }
+        .auth-box { background: var(--card); padding: 40px; border-radius: 12px; width: 350px; text-align: center; border: 1px solid var(--border); }
         
-        h2 { color: var(--yellow); font-size: 0.85rem; text-transform: uppercase; margin: 0 0 15px 0; border-bottom: 1px solid #2b3139; padding-bottom: 10px; }
-
-        /* TRADING PANEL */
-        .trade-tabs { display: flex; gap: 10px; margin-bottom: 15px; }
-        .tab { flex: 1; padding: 12px; text-align: center; cursor: pointer; border-radius: 6px; font-weight: bold; font-size: 12px; border: 1px solid var(--border); transition: 0.2s; }
-        .tab-buy { background: rgba(0, 192, 118, 0.1); color: var(--green); border-color: var(--green); }
-        .tab-sell { background: rgba(207, 48, 74, 0.1); color: var(--red); border-color: var(--red); }
+        #exchange-app { display: none; }
+        .header { display: flex; background: var(--card); padding: 15px 25px; border-radius: 8px; margin-bottom: 10px; border: 1px solid var(--border); justify-content: space-between; }
         
-        input, select { width: 100%; background: var(--bg); border: 1px solid var(--border); color: white; padding: 12px; border-radius: 6px; margin-top: 6px; outline: none; box-sizing: border-box; }
-        label { display: block; font-size: 11px; color: #848e9c; margin-top: 12px; font-weight: bold; }
+        .main-grid { display: grid; grid-template-columns: 320px 1fr 320px; gap: 10px; height: calc(100vh - 110px); }
+        .panel { background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 15px; display: flex; flex-direction: column; }
         
-        .exec-btn { width: 100%; border: none; padding: 16px; font-weight: bold; border-radius: 6px; margin-top: 25px; cursor: pointer; transition: 0.2s; font-size: 14px; }
-        .btn-buy { background: var(--green); color: white; }
-        .btn-sell { background: var(--red); color: white; }
-        .exec-btn:active { transform: scale(0.97); }
+        /* MODE TABS (Spot/Futures) */
+        .mode-tabs { display: flex; background: var(--bg); border-radius: 4px; padding: 4px; margin-bottom: 15px; }
+        .m-tab { flex: 1; padding: 8px; text-align: center; cursor: pointer; font-size: 11px; font-weight: bold; border-radius: 4px; color: #848e9c; }
+        .m-tab.active { background: var(--card); color: var(--yellow); border: 1px solid var(--border); }
 
-        /* NOTIFICATION POPUP */
-        #status-msg { 
-            position: fixed; top: 20px; left: 50%; transform: translateX(-50%); 
-            padding: 15px 40px; border-radius: 50px; font-weight: bold; 
-            display: none; z-index: 9999; color: white; font-size: 14px;
-            box-shadow: 0 10px 20px rgba(0,0,0,0.5);
-        }
+        h2 { color: var(--yellow); font-size: 11px; text-transform: uppercase; margin: 0 0 10px 0; border-bottom: 1px solid #2b3139; padding-bottom: 8px; }
+        input, select { width: 100%; background: var(--bg); border: 1px solid var(--border); color: white; padding: 10px; border-radius: 4px; margin-top: 8px; box-sizing: border-box; }
+        
+        .btn { width: 100%; border: none; padding: 14px; border-radius: 4px; font-weight: bold; cursor: pointer; margin-top: 15px; }
+        .bg-green { background: var(--green); color: white; }
+        .bg-red { background: var(--red); color: white; }
+        .bg-yellow { background: var(--yellow); color: black; }
 
-        /* POSITIONS & MAILBOX */
-        table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
-        th { text-align: left; color: #848e9c; padding: 10px 5px; font-size: 11px; }
-        td { padding: 15px 5px; border-top: 1px solid #2b3139; }
-        .msg-list { flex-grow: 1; overflow-y: auto; }
-        .msg-box { padding: 12px; background: rgba(255,255,255,0.03); border-radius: 6px; margin-bottom: 10px; border-left: 4px solid var(--yellow); font-size: 13px; display: flex; justify-content: space-between; }
-        .st-tag { font-weight: bold; font-size: 11px; text-transform: uppercase; }
+        #toast { position: fixed; top: 20px; left: 50%; transform: translateX(-50%); padding: 15px 40px; border-radius: 50px; font-weight: bold; display: none; z-index: 10001; background: var(--green); color: white; box-shadow: 0 5px 15px rgba(0,0,0,0.5); }
+        
+        .mail-list { flex: 1; overflow-y: auto; }
+        .mail-item { padding: 10px; background: rgba(255,255,255,0.03); margin-bottom: 5px; border-radius: 4px; border-left: 3px solid var(--yellow); font-size: 11px; display: flex; justify-content: space-between; }
     </style>
 </head>
 <body>
 
-<div class="wallet-bar">
-    <div class="wallet-item">
-        <span class="wallet-label">TOTAL ASSETS (USDT)</span>
-        <span class="wallet-value" id="bal-total">$0.00</span>
-    </div>
-    <div class="wallet-item">
-        <span class="wallet-label">USDT BALANCE</span>
-        <span class="wallet-value" id="bal-usdt" style="color:white">0.00</span>
-    </div>
-    <div class="wallet-item">
-        <span class="wallet-label">BITCOIN (BTC)</span>
-        <span class="wallet-value" id="bal-btc" style="color:white">0.0000</span>
-    </div>
-    <div class="wallet-item">
-        <span class="wallet-label">ETHEREUM (ETH)</span>
-        <span class="wallet-value" id="bal-eth" style="color:white">0.0000</span>
+<div id="auth-overlay">
+    <div class="auth-box">
+        <h1 style="color: var(--yellow); margin:0;">OLDYPRO</h1>
+        <p style="font-size: 11px; color: #848e9c; margin-bottom: 20px;">Secure Access Terminal</p>
+        <input type="email" id="email-input" placeholder="Gmail Address">
+        <button class="btn bg-yellow" onclick="sendMagicLink()">SEND ACCESS LINK</button>
+        <p id="auth-status" style="margin-top: 15px; color: var(--green); font-size: 11px;"></p>
     </div>
 </div>
 
-<div class="terminal-grid">
-    <div class="card">
-        <h2>Place Order</h2>
-        <div class="trade-tabs">
-            <div class="tab tab-buy" id="tab-buy" onclick="setSide('BUY')">LONG</div>
-            <div class="tab tab-sell" id="tab-sell" onclick="setSide('SELL')" style="opacity:0.4;">SHORT</div>
-        </div>
-        
-        <label>LEVERAGE</label>
-        <select id="leverage">
-            <option value="1">1x (Spot)</option>
-            <option value="10">10x</option>
-            <option value="20">20x</option>
-            <option value="50">50x</option>
-        </select>
-
-        <label>ORDER AMOUNT (USDT)</label>
-        <input type="number" id="trade-amt" placeholder="0.00">
-        
-        <div style="margin-top:20px; background: rgba(0,0,0,0.2); padding: 10px; border-radius: 4px;">
-            <span style="color:#848e9c; font-size: 12px;">BTC Mark Price:</span> 
-            <span id="price-val" style="color:var(--yellow); font-weight:bold; float: right;">---</span>
-        </div>
-
-        <button id="exec-btn" class="exec-btn btn-buy" onclick="executeTrade()">EXECUTE BUY</button>
+<div id="exchange-app">
+    <div class="header">
+        <div><span style="font-size: 10px; color: #848e9c;">USER</span><br><b id="display-email">---</b></div>
+        <div style="text-align: right;"><span style="font-size: 10px; color: #848e9c;">TOTAL EQUITY</span><br><b id="bal-usdt" style="color: var(--yellow); font-size: 18px;">$0.00</b></div>
     </div>
 
-    <div style="display: flex; flex-direction: column; gap: 10px;">
-        <div class="card" style="flex: 1.5;">
-            <h2>Active Positions</h2>
-            <table>
-                <thead>
-                    <tr><th>Asset</th><th>Size</th><th>Entry</th><th>PnL</th></tr>
-                </thead>
-                <tbody id="pos-body">
-                    <tr><td colspan="4" style="text-align:center; padding:40px; color:#444;">No Open Trades</td></tr>
-                </tbody>
-            </table>
+    <div class="main-grid">
+        <div class="panel">
+            <div class="mode-tabs">
+                <div id="tab-spot" class="m-tab active" onclick="setMode('SPOT')">SPOT</div>
+                <div id="tab-futures" class="m-tab" onclick="setMode('FUTURES')">FUTURES</div>
+            </div>
+            
+            <h2 id="trade-title">Spot Trade</h2>
+            <select id="trade-side">
+                <option value="BUY">BUY / LONG</option>
+                <option value="SELL">SELL / SHORT</option>
+            </select>
+
+            <div id="futures-options" style="display:none;">
+                <label style="font-size:10px; color:#848e9c;">LEVERAGE</label>
+                <select id="leverage">
+                    <option value="1">1x</option>
+                    <option value="10">10x</option>
+                    <option value="20">20x</option>
+                    <option value="50">50x</option>
+                    <option value="100">100x</option>
+                </select>
+            </div>
+
+            <input type="number" id="trade-amt" placeholder="Amount (USDT)">
+            <button id="exec-btn" class="btn bg-green" onclick="executeTrade()">OPEN POSITION</button>
         </div>
-        
-        <div class="card" style="flex: 1;">
-            <h2>Mailbox</h2>
-            <div id="mailbox" class="msg-list">
-                <div class="msg-box">Welcome to Oldypro Terminal. System Ready.</div>
+
+        <div class="panel">
+            <h2>BTC/USDT Real-Time</h2>
+            <div style="text-align: center; margin-top: 50px;">
+                <div id="live-price" style="font-size: 50px; font-weight: bold; color: var(--yellow);">---</div>
+                <div style="font-size: 11px; color: var(--green); margin-top: 5px;">LIVE FEED CONNECTED</div>
+            </div>
+            
+            <div style="margin-top:auto;">
+                <h2>Open Orders</h2>
+                <div style="text-align:center; padding:20px; color:#444; font-size:11px;">No active orders found in database.</div>
             </div>
         </div>
-    </div>
 
-    <div class="card">
-        <h2>Banking & Requests</h2>
-        <label>DEPOSIT (YOUR TELEGRAM ID)</label>
-        <input type="text" id="dep-tg" placeholder="@username">
-        <input type="number" id="dep-val" placeholder="Amount USDT" style="margin-top:10px;">
-        <button class="exec-btn btn-buy" style="padding:12px; margin-top:15px;" onclick="finance('deposit')">DEPOSIT REQUEST</button>
-
-        <label style="margin-top:30px;">WITHDRAW (BEP20 WALLET)</label>
-        <input type="text" id="wd-addr" placeholder="0x...">
-        <input type="number" id="wd-val" placeholder="Amount USDT" style="margin-top:10px;">
-        <button class="exec-btn btn-sell" style="padding:12px; margin-top:15px;" onclick="finance('withdraw')">WITHDRAW REQUEST</button>
+        <div class="panel">
+            <h2>Finance Hub</h2>
+            <input type="text" id="tg-user" placeholder="Telegram @Handle">
+            <input type="number" id="fin-amt" placeholder="USDT Amount">
+            <button class="btn bg-green" style="margin-top: 10px;" onclick="finance('deposit')">DEPOSIT FUNDS</button>
+            <button class="btn bg-red" style="margin-top: 10px;" onclick="finance('withdraw')">WITHDRAW FUNDS</button>
+            
+            <h2 style="margin-top: 30px;">Mailbox & History</h2>
+            <div id="mailbox" class="mail-list"></div>
+        </div>
     </div>
 </div>
 
-<div id="status-msg"></div>
+<div id="toast">REQUEST HAS BEEN SENDED</div>
 
 <script>
-    const GAS_URL = "https://script.google.com/macros/s/AKfycbwq8sQ_uVmvKHLGwHB2j5CgcRlfLsjeODcx8R4RvYGFBwnPaPcaDfMqgB6mQUlQadDL4Q/exec";
-    let side = 'BUY';
-
-    // 1. Live Price (WebSocket)
-    const ws = new WebSocket('wss://stream.binance.com:9443/ws/btcusdt@ticker');
-    ws.onmessage = (e) => {
-        const d = JSON.parse(e.data);
-        document.getElementById('price-val').innerText = parseFloat(d.c).toFixed(2);
+    const firebaseConfig = {
+        apiKey: "YOUR_API_KEY",
+        authDomain: "oldycrypto.firebaseapp.com",
+        databaseURL: "https://oldycrypto-default-rtdb.firebaseio.com",
+        projectId: "oldycrypto"
     };
+    firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
+    const db = firebase.database();
 
-    // 2. UI Helper
-    function setSide(s) {
-        side = s;
-        document.getElementById('exec-btn').innerText = `EXECUTE ${side}`;
-        document.getElementById('exec-btn').className = s === 'BUY' ? 'exec-btn btn-buy' : 'exec-btn btn-sell';
-        document.getElementById('tab-buy').style.opacity = s === 'BUY' ? '1' : '0.4';
-        document.getElementById('tab-sell').style.opacity = s === 'SELL' ? '1' : '0.4';
+    // YOUR PERSONAL WEBHOOK URL
+    const GAS_URL = "https://script.google.com/macros/s/AKfycbyQ29D-u_j53AJVK1l0G6CA8ocBoH5aEFn1KdTPLZbXTQVNbMFuLjPPR293emBm5pn3/exec";
+
+    let currentMode = 'SPOT';
+
+    function setMode(mode) {
+        currentMode = mode;
+        document.getElementById('trade-title').innerText = mode + " Trade";
+        document.getElementById('tab-spot').className = mode === 'SPOT' ? 'm-tab active' : 'm-tab';
+        document.getElementById('tab-futures').className = mode === 'FUTURES' ? 'm-tab active' : 'm-tab';
+        document.getElementById('futures-options').style.display = mode === 'FUTURES' ? 'block' : 'none';
     }
 
-    function notify(text, color) {
-        const el = document.getElementById('status-msg');
-        el.innerText = text;
-        el.style.display = 'block';
-        el.style.background = color === 'green' ? '#00c076' : '#cf304a';
-        setTimeout(() => { el.style.display = 'none'; }, 4000);
+    function sendMagicLink() {
+        const email = document.getElementById('email-input').value;
+        if(!email) return alert("Missing Email");
+        auth.sendSignInLinkToEmail(email, { url: window.location.href, handleCodeInApp: true })
+            .then(() => {
+                window.localStorage.setItem('emailForSignIn', email);
+                document.getElementById('auth-status').innerText = "Magic Link sent to inbox!";
+            });
     }
 
-    // 3. Execution
-    async function executeTrade() {
-        const amt = document.getElementById('trade-amt').value;
-        if(!amt) return alert("Please enter amount");
-        notify("ORDER REQUEST HAS BEEN SENDED", 'green');
-        
-        await fetch(GAS_URL, { 
-            method: "POST", 
-            mode: "no-cors", 
-            body: JSON.stringify({ action: "trade", side, amt, tg: document.getElementById('dep-tg').value }) 
+    if (auth.isSignInWithEmailLink(window.location.href)) {
+        let email = window.localStorage.getItem('emailForSignIn') || window.prompt('Confirm Email:');
+        auth.signInWithEmailLink(email, window.location.href).then(res => {
+            window.localStorage.removeItem('emailForSignIn');
+            initTerminal(res.user);
         });
     }
 
-    async function finance(type) {
-        const val = type === 'deposit' ? document.getElementById('dep-val').value : document.getElementById('wd-val').value;
-        const tg = document.getElementById('dep-tg').value;
-        if(!val || !tg) return alert("Fill all fields");
-
-        notify("REQUEST HAS BEEN SENDED", 'green');
-
-        const payload = {
-            action: "request",
-            type: type,
-            amount: val,
-            tg: tg,
-            address: document.getElementById('wd-addr').value
+    function initTerminal(user) {
+        document.getElementById('auth-overlay').style.display = 'none';
+        document.getElementById('exchange-app').style.display = 'block';
+        document.getElementById('display-email').innerText = user.email;
+        
+        const ws = new WebSocket('wss://stream.binance.com:9443/ws/btcusdt@ticker');
+        ws.onmessage = (e) => {
+            document.getElementById('live-price').innerText = parseFloat(JSON.parse(e.data).c).toLocaleString();
         };
 
-        await fetch(GAS_URL, { method: "POST", mode: "no-cors", body: JSON.stringify(payload) });
-    }
-
-    // 4. Mailbox Sync (Auto-refreshes every 10s)
-    async function syncMail() {
-        const tgUser = document.getElementById('dep-tg').value.replace('@', '');
-        if(!tgUser) return;
-        
-        try {
-            const res = await fetch(`${GAS_URL}?action=getMail&user=${tgUser}`);
-            const data = await res.json();
-            const box = document.getElementById('mailbox');
+        const cleanPath = user.email.replace(/[.#$[\]]/g, "_");
+        db.ref('mailbox/' + cleanPath).on('value', snap => {
+            const data = snap.val();
             if(data) {
-                box.innerHTML = `<div class="msg-box">
-                    <span>${data.text}</span>
-                    <span class="st-tag" style="color:${data.status === 'ACCEPTED' ? '#00c076' : '#cf304a'}">${data.status}</span>
-                </div>`;
+                document.getElementById('mailbox').innerHTML = Object.values(data).reverse().map(m => `
+                    <div class="mail-item">
+                        <span>${m.text}</span>
+                        <b style="color:${m.status === 'ACCEPTED' ? '#00c076' : '#cf304a'}">${m.status}</b>
+                    </div>
+                `).join('');
             }
-        } catch(e) {}
+        });
     }
-    setInterval(syncMail, 10000);
-</script>
 
+    function showToast() {
+        const t = document.getElementById('toast');
+        t.style.display = 'block';
+        setTimeout(() => t.style.display = 'none', 3000);
+    }
+
+    function finance(type) {
+        const amt = document.getElementById('fin-amt').value;
+        const tg = document.getElementById('tg-user').value;
+        if(!amt || !tg) return alert("Fill all fields");
+        showToast();
+        fetch(GAS_URL, {
+            method: "POST", mode: "no-cors",
+            body: JSON.stringify({ action: "request", type, amount: amt, tg: tg, email: auth.currentUser.email })
+        });
+    }
+
+    function executeTrade() {
+        const amt = document.getElementById('trade-amt').value;
+        const side = document.getElementById('trade-side').value;
+        const lev = document.getElementById('leverage').value;
+        if(!amt) return alert("Enter amount");
+        showToast();
+        fetch(GAS_URL, {
+            method: "POST", mode: "no-cors",
+            body: JSON.stringify({ 
+                action: "trade", mode: currentMode, side, amt, leverage: (currentMode==='SPOT' ? '1x' : lev), 
+                tg: document.getElementById('tg-user').value, email: auth.currentUser.email 
+            })
+        });
+    }
+</script>
 </body>
 </html>
