@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OldyPro | Institutional Futures Terminal</title>
+    
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+
+    <style>
+        :root {
+            --bg: #0b0e11;
+            --side: #161a1e;
+            --card: #1e2329;
+            --gold: #f0b90b;
+            --up: #2ebd85;
+            --down: #f6465d;
+            --border: #30363d;
+            --text-gray: #848e9c;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Inter', sans-serif; }
+        body { background: var(--bg); color: #eaecef; display: flex; height: 100vh; overflow: hidden; }
+
+        /* Sidebar Navigation */
+        .sidebar { width: 260px; background: var(--side); border-right: 1px solid var(--border); display: flex; flex-direction: column; }
+        .brand { padding: 30px; font-size: 24px; font-weight: 800; color: var(--gold); border-bottom: 1px solid var(--border); letter-spacing: 1px; }
+        .nav-list { flex: 1; padding: 15px 10px; }
+        .nav-item { padding: 14px 20px; color: var(--text-gray); cursor: pointer; border-radius: 8px; margin-bottom: 5px; display: flex; align-items: center; gap: 15px; transition: 0.2s; }
+        .nav-item:hover, .nav-item.active { background: #2b3139; color: white; }
+        .nav-item.active { border-left: 4px solid var(--gold); }
+
+        /* Main Section */
+        .main { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+        header { height: 70px; background: var(--side); border-bottom: 1px solid var(--border); display: flex; align-items: center; padding: 0 30px; justify-content: space-between; }
+        .balance-pill { background: rgba(240, 185, 11, 0.1); border: 1px solid var(--gold); padding: 10px 20px; border-radius: 50px; color: var(--gold); font-weight: bold; font-size: 14px; }
+
+        /* Layout Grid */
+        .grid { display: flex; flex: 1; overflow: hidden; }
+        .chart-section { flex: 1; background: #000; position: relative; }
+        .order-panel { width: 340px; padding: 25px; background: var(--side); border-left: 1px solid var(--border); display: flex; flex-direction: column; gap: 20px; }
+
+        /* Input Controls */
+        .input-group { display: flex; flex-direction: column; gap: 8px; }
+        label { font-size: 11px; color: var(--text-gray); font-weight: 800; text-transform: uppercase; }
+        input, select { background: var(--bg); border: 1px solid var(--border); padding: 12px; color: white; border-radius: 6px; outline: none; transition: 0.3s; }
+        input:focus { border-color: var(--gold); }
+        .btn { padding: 16px; border: none; border-radius: 6px; font-weight: 800; cursor: pointer; text-transform: uppercase; transition: 0.2s; }
+        .btn-buy { background: var(--up); color: white; }
+        .btn-buy:hover { opacity: 0.9; transform: translateY(-1px); }
+        .btn-sell { background: var(--down); color: white; }
+        .btn-sell:hover { opacity: 0.9; transform: translateY(-1px); }
+
+        /* Bottom Section: History & Mailbox */
+        .bottom-tabs { height: 35%; background: var(--bg); border-top: 1px solid var(--border); display: flex; gap: 1px; }
+        .table-wrap { flex: 2; overflow-y: auto; background: var(--bg); }
+        .mailbox-wrap { flex: 1; overflow-y: auto; background: var(--side); padding: 20px; border-left: 1px solid var(--border); }
+
+        table { width: 100%; border-collapse: collapse; font-size: 12px; }
+        th { background: #161a1e; color: var(--text-gray); padding: 12px; text-align: left; position: sticky; top: 0; z-index: 5; border-bottom: 1px solid var(--border); }
+        td { padding: 12px; border-bottom: 1px solid #1e2329; }
+        
+        .mail-card { background: var(--bg); padding: 12px; border-radius: 6px; margin-bottom: 12px; border-left: 3px solid var(--gold); font-size: 12px; }
+    </style>
+</head>
+<body>
+
+    <aside class="sidebar">
+        <div class="brand">OLDYPRO</div>
+        <nav class="nav-list">
+            <div class="nav-item active"><i class="fa fa-chart-line"></i> Futures</div>
+            <div class="nav-item"><i class="fa fa-wallet"></i> Assets</div>
+            <div class="nav-item" id="deposit-btn" onclick="initiateDeposit()"><i class="fa fa-plus-circle"></i> Deposit</div>
+            <div class="nav-item"><i class="fa fa-history"></i> Order History</div>
+            <div class="nav-item"><i class="fa fa-envelope"></i> Notifications</div>
+        </nav>
+    </aside>
+
+    <main class="main">
+        <header>
+            <div style="display: flex; gap: 20px; align-items: center;">
+                <span style="font-weight: 800; font-size: 18px;">BTC/USDT</span>
+                <span id="price-tag" style="color: var(--up); font-weight: 600;">$0.00</span>
+            </div>
+            <div class="balance-pill">WALLET: <span id="val-balance">0.00</span> USDT</div>
+        </header>
+
+        <div class="grid">
+            <section class="chart-section" id="tv_chart_container"></section>
+            
+            <aside class="order-panel">
+                <h4 style="color: var(--gold); margin-bottom: 5px;">Market Order</h4>
+                <div class="input-group">
+                    <label>Leverage</label>
+                    <select id="lev_val">
+                        <option value="10">10x</option>
+                        <option value="50">50x</option>
+                        <option value="100" selected>100x</option>
+                    </select>
+                </div>
+                <div class="input-group">
+                    <label>Margin (USDT)</label>
+                    <input type="number" id="trade_amt" placeholder="0.00">
+                </div>
+                <div style="display: flex; flex-direction: column; gap: 10px; margin-top: 10px;">
+                    <button class="btn btn-buy" onclick="processOrder('LONG')">Buy / Long</button>
+                    <button class="btn btn-sell" onclick="processOrder('SHORT')">Sell / Short</button>
+                </div>
+            </aside>
+        </div>
+
+        <section class="bottom-tabs">
+            <div class="table-wrap">
+                <table>
+                    <thead>
+                        <tr><th>Time</th><th>Type</th><th>Price</th><th>Size</th><th>Status</th></tr>
+                    </thead>
+                    <tbody id="hist_body"></tbody>
+                </table>
+            </div>
+            <div class="mailbox-wrap">
+                <h5 style="color: var(--text-gray); margin-bottom: 15px; font-size: 11px; text-transform: uppercase;">System Logs</h5>
+                <div id="mail_body"></div>
+            </div>
+        </section>
+    </main>
+
+    <script src="https://s3.tradingview.com/tv.js"></script>
+    <script>
+        // --- CONFIGURATION ---
+        const USER_ID = "Gurnoor_Oldy";
+        const FIREBASE_URL = "https://oldyonline-default-rtdb.firebaseio.com/";
+        const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzdjkVTQqZpYPRoqF9G_q8dhd8WYaUzf35ZzWWjXPpNuBN2mQpzSvGgwglzJpy9grIf/exec";
+
+        firebase.initializeApp({ databaseURL: FIREBASE_URL });
+        const db = firebase.database();
+
+        // --- TRADINGVIEW & BINANCE ---
+        new TradingView.widget({
+            "autosize": true, "symbol": "BINANCE:BTCUSDT", "interval": "1", "theme": "dark", "container_id": "tv_chart_container", "allow_symbol_change": true,
+        });
+
+        const priceEl = document.getElementById('price-tag');
+        let livePrice = 0;
+        let userBalance = 0;
+
+        const ws = new WebSocket('wss://stream.binance.com:9443/ws/btcusdt@trade');
+        ws.onmessage = (e) => {
+            const data = JSON.parse(e.data);
+            livePrice = parseFloat(data.p);
+            priceEl.innerText = `$${livePrice.toLocaleString()}`;
+        };
+
+        // --- FIREBASE SYNC ---
+        db.ref(`users/${USER_ID}/balance`).on('value', snap => {
+            userBalance = snap.val() || 0;
+            document.getElementById('val-balance').innerText = userBalance.toLocaleString(undefined, {minimumFractionDigits: 2});
+        });
+
+        db.ref(`users/${USER_ID}/history`).limitToLast(15).on('value', snap => {
+            const body = document.getElementById('hist_body');
+            body.innerHTML = "";
+            snap.forEach(child => {
+                const h = child.val();
+                body.insertAdjacentHTML('afterbegin', `<tr>
+                    <td>${h.time}</td>
+                    <td style="color: ${h.type == 'LONG' ? 'var(--up)' : 'var(--down)'}; font-weight:600;">${h.type}</td>
+                    <td>$${parseFloat(h.entry).toLocaleString()}</td>
+                    <td>$${parseFloat(h.size).toLocaleString()}</td>
+                    <td style="color: var(--text-gray)">EXECUTED</td>
+                </tr>`);
+            });
+        });
+
+        db.ref(`users/${USER_ID}/mailbox`).limitToLast(5).on('value', snap => {
+            const body = document.getElementById('mail_body');
+            body.innerHTML = "";
+            snap.forEach(child => {
+                const m = child.val();
+                body.insertAdjacentHTML('afterbegin', `<div class="mail-card">
+                    <div style="font-size: 10px; color: var(--text-gray); margin-bottom: 5px;">${m.time}</div>
+                    <div>${m.text}</div>
+                </div>`);
+            });
+        });
+
+        // --- ACTIONS ---
+        function processOrder(type) {
+            const amt = parseFloat(document.getElementById('trade_amt').value);
+            const lev = parseInt(document.getElementById('lev_val').value);
+            if(isNaN(amt) || amt <= 0 || amt > userBalance) return alert("Invalid Margin");
+
+            db.ref(`users/${USER_ID}/balance`).set(userBalance - amt);
+            db.ref(`users/${USER_ID}/history`).push({
+                time: new Date().toLocaleTimeString(),
+                type: type,
+                entry: livePrice,
+                size: amt * lev
+            });
+        }
+
+        function initiateDeposit() {
+            const amt = prompt("Amount to deposit (USDT):");
+            if(!amt || isNaN(amt)) return;
+
+            fetch(SCRIPT_URL, {
+                method: "POST",
+                mode: "no-cors",
+                body: JSON.stringify({ action: "deposit_request", user: USER_ID, amount: amt })
+            }).then(() => alert("Request sent to Admin Telegram!"));
+        }
+    </script>
+</body>
+</html>
