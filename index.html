@@ -24,36 +24,36 @@
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Inter', sans-serif; }
         body { background: var(--bg); color: #eaecef; display: flex; height: 100vh; overflow: hidden; }
 
-        /* Navigation */
+        /* Sidebar Navigation */
         .sidebar { width: 260px; background: var(--side); border-right: 1px solid var(--border); display: flex; flex-direction: column; }
-        .brand { padding: 30px; font-size: 24px; font-weight: 800; color: var(--gold); border-bottom: 1px solid var(--border); }
+        .brand { padding: 30px; font-size: 24px; font-weight: 800; color: var(--gold); border-bottom: 1px solid var(--border); letter-spacing: 1px; }
         .nav-list { flex: 1; padding: 15px 10px; }
-        .nav-item { padding: 14px 20px; color: var(--text-gray); cursor: pointer; border-radius: 8px; margin-bottom: 5px; display: flex; align-items: center; gap: 15px; }
+        .nav-item { padding: 14px 20px; color: var(--text-gray); cursor: pointer; border-radius: 8px; margin-bottom: 5px; display: flex; align-items: center; gap: 15px; transition: 0.2s; }
         .nav-item:hover, .nav-item.active { background: #2b3139; color: white; }
         .nav-item.active { border-left: 4px solid var(--gold); }
 
-        /* Main Workspace */
+        /* Main Section */
         .main { flex: 1; display: flex; flex-direction: column; min-width: 0; }
         header { height: 70px; background: var(--side); border-bottom: 1px solid var(--border); display: flex; align-items: center; padding: 0 30px; justify-content: space-between; }
-        .balance-pill { background: rgba(240, 185, 11, 0.1); border: 1px solid var(--gold); padding: 10px 20px; border-radius: 50px; color: var(--gold); font-weight: bold; }
+        .balance-pill { background: rgba(240, 185, 11, 0.1); border: 1px solid var(--gold); padding: 10px 20px; border-radius: 50px; color: var(--gold); font-weight: bold; font-size: 14px; }
 
+        /* Layout Grid */
         .grid { display: flex; flex: 1; overflow: hidden; }
-        .chart-section { flex: 1; background: #000; }
+        .chart-section { flex: 1; background: #000; position: relative; }
         .order-panel { width: 340px; padding: 25px; background: var(--side); border-left: 1px solid var(--border); display: flex; flex-direction: column; gap: 20px; }
 
-        /* Buttons & Inputs */
-        input, select { background: var(--bg); border: 1px solid var(--border); padding: 12px; color: white; border-radius: 6px; outline: none; }
-        .btn { padding: 16px; border: none; border-radius: 6px; font-weight: 800; cursor: pointer; text-transform: uppercase; }
+        /* Input Controls */
+        .input-group { display: flex; flex-direction: column; gap: 8px; }
+        label { font-size: 11px; color: var(--text-gray); font-weight: 800; text-transform: uppercase; }
+        input { background: var(--bg); border: 1px solid var(--border); padding: 12px; color: white; border-radius: 6px; outline: none; transition: 0.3s; }
+        input:focus { border-color: var(--gold); }
+        .btn { padding: 16px; border: none; border-radius: 6px; font-weight: 800; cursor: pointer; text-transform: uppercase; transition: 0.2s; }
         .btn-buy { background: var(--up); color: white; }
-        .btn-sell { background: var(--down); color: white; }
+        .btn-deposit { background: var(--gold); color: #000; }
 
-        /* Panels */
+        /* Bottom Section: Mailbox */
         .bottom-tabs { height: 35%; background: var(--bg); border-top: 1px solid var(--border); display: flex; }
-        .table-wrap { flex: 2; overflow-y: auto; }
-        .mailbox-wrap { flex: 1; overflow-y: auto; background: var(--side); padding: 20px; border-left: 1px solid var(--border); }
-        table { width: 100%; border-collapse: collapse; font-size: 12px; }
-        th { background: #161a1e; color: var(--text-gray); padding: 12px; text-align: left; position: sticky; top: 0; }
-        td { padding: 12px; border-bottom: 1px solid #1e2329; }
+        .mailbox-wrap { flex: 1; overflow-y: auto; background: var(--side); padding: 20px; }
         .mail-card { background: var(--bg); padding: 12px; border-radius: 6px; margin-bottom: 12px; border-left: 3px solid var(--gold); font-size: 12px; }
     </style>
 </head>
@@ -65,7 +65,7 @@
             <div class="nav-item active"><i class="fa fa-chart-line"></i> Futures</div>
             <div class="nav-item" onclick="initiateDeposit()"><i class="fa fa-plus-circle"></i> Deposit</div>
             <div class="nav-item"><i class="fa fa-history"></i> History</div>
-            <div class="nav-item"><i class="fa fa-envelope"></i> Mailbox</div>
+            <div class="nav-item"><i class="fa fa-envelope"></i> Notifications</div>
         </nav>
     </aside>
 
@@ -82,21 +82,19 @@
             <section class="chart-section" id="tv_chart_container"></section>
             
             <aside class="order-panel">
-                <label style="font-size: 11px; color: var(--text-gray);">MARGIN (USDT)</label>
-                <input type="number" id="trade_amt" placeholder="0.00">
-                <button class="btn btn-buy" onclick="processOrder('LONG')">Buy / Long</button>
-                <button class="btn btn-sell" onclick="processOrder('SHORT')">Sell / Short</button>
+                <h4 style="color: var(--gold); margin-bottom: 5px;">Market Order</h4>
+                <div class="input-group">
+                    <label>Margin (USDT)</label>
+                    <input type="number" id="trade_amt" placeholder="0.00">
+                </div>
+                <button class="btn btn-buy" onclick="processOrder('LONG')">Open Long</button>
+                <button class="btn btn-deposit" onclick="initiateDeposit()">Quick Deposit</button>
             </aside>
         </div>
 
         <section class="bottom-tabs">
-            <div class="table-wrap">
-                <table>
-                    <thead><tr><th>Time</th><th>Type</th><th>Price</th><th>Size</th></tr></thead>
-                    <tbody id="hist_body"></tbody>
-                </table>
-            </div>
             <div class="mailbox-wrap">
+                <h5 style="color: var(--text-gray); margin-bottom: 15px; font-size: 11px; text-transform: uppercase;">System Logs</h5>
                 <div id="mail_body"></div>
             </div>
         </section>
@@ -104,23 +102,29 @@
 
     <script src="https://s3.tradingview.com/tv.js"></script>
     <script>
-        // --- 1. CONFIGURATION ---
+        // --- CONFIGURATION ---
         const USER_ID = "Gurnoor_Oldy";
         const FIREBASE_URL = "https://oldyonline-default-rtdb.firebaseio.com/";
-        const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzdjkVTQqZpYPRoqF9G_q8dhd8WYaUzf35ZzWWjXPpNuBN2mQpzSvGgwglzJpy9grIf/exec";
+        const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzfrqOw1alQ4QqX8MZn27SsqB2OsKJlULW8Gw-7mL6PoSc9wj3P_6Rmn099qhVjfe6Z/exec";
 
         firebase.initializeApp({ databaseURL: FIREBASE_URL });
         const db = firebase.database();
 
-        // --- 2. CHART & PRICE ---
-        new TradingView.widget({ "autosize": true, "symbol": "BINANCE:BTCUSDT", "theme": "dark", "container_id": "tv_chart_container" });
+        // --- TRADINGVIEW & BINANCE ---
+        new TradingView.widget({
+            "autosize": true, "symbol": "BINANCE:BTCUSDT", "interval": "1", "theme": "dark", "container_id": "tv_chart_container", "allow_symbol_change": true,
+        });
+
         const priceEl = document.getElementById('price-tag');
         let livePrice = 0, userBalance = 0;
 
         const ws = new WebSocket('wss://stream.binance.com:9443/ws/btcusdt@trade');
-        ws.onmessage = (e) => { livePrice = parseFloat(JSON.parse(e.data).p); priceEl.innerText = `$${livePrice.toLocaleString()}`; };
+        ws.onmessage = (e) => {
+            livePrice = parseFloat(JSON.parse(e.data).p);
+            priceEl.innerText = `$${livePrice.toLocaleString()}`;
+        };
 
-        // --- 3. FIREBASE SYNC ---
+        // --- FIREBASE SYNC ---
         db.ref(`users/${USER_ID}/balance`).on('value', snap => {
             userBalance = snap.val() || 0;
             document.getElementById('val-balance').innerText = userBalance.toFixed(2);
@@ -131,30 +135,33 @@
             body.innerHTML = "";
             snap.forEach(child => {
                 const m = child.val();
-                body.insertAdjacentHTML('afterbegin', `<div class="mail-card"><div>${m.text}</div></div>`);
+                body.insertAdjacentHTML('afterbegin', `<div class="mail-card">
+                    <div style="font-size: 10px; color: var(--text-gray); margin-bottom: 5px;">${m.time || 'System'}</div>
+                    <div>${m.text}</div>
+                </div>`);
             });
         });
 
-        // --- 4. DEPOSIT & TRADE ---
+        // --- ACTIONS ---
         function initiateDeposit() {
-            const amt = prompt("Enter Amount (USDT):");
+            const amt = prompt("Amount to deposit (USDT):");
             if(!amt || isNaN(amt)) return;
 
-            // "no-cors" is the secret to getting Google Scripts to work from a web page
-            fetch(SCRIPT_URL, {
-                method: "POST",
-                mode: "no-cors",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ action: "deposit_request", user: USER_ID, amount: amt })
-            }).then(() => alert("Request Sent! Check Telegram."));
+            // Updated GET Request Logic
+            const finalUrl = `${SCRIPT_URL}?action=deposit_request&user=${USER_ID}&amount=${amt}`;
+
+            fetch(finalUrl, { mode: 'no-cors' })
+                .then(() => alert("Request sent to Admin! Check your Telegram Bot."))
+                .catch(() => alert("Connection error."));
         }
 
         function processOrder(type) {
             const amt = parseFloat(document.getElementById('trade_amt').value);
-            if(isNaN(amt) || amt > userBalance) return alert("Insufficient Balance");
+            if(isNaN(amt) || amt <= 0 || amt > userBalance) return alert("Insufficient Margin");
             db.ref(`users/${USER_ID}/balance`).set(userBalance - amt);
-            db.ref(`users/${USER_ID}/history`).push({ time: new Date().toLocaleTimeString(), type: type, entry: livePrice, size: amt });
+            alert("Order Executed!");
         }
     </script>
 </body>
 </html>
+
