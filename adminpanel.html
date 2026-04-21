@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OldyPro | Admin Controller</title>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
+    <style>
+        body { background: #0b0e11; color: #eaecef; font-family: sans-serif; padding: 20px; }
+        .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #30363d; padding-bottom: 10px; }
+        .card { background: #161a1e; border: 1px solid #30363d; padding: 15px; border-radius: 8px; margin-top: 15px; display: flex; justify-content: space-between; align-items: center; }
+        .user-info { font-weight: bold; color: #f0b90b; }
+        .amt { font-size: 20px; margin: 5px 0; }
+        .btn-group { display: flex; gap: 10px; }
+        button { padding: 10px 15px; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; }
+        .btn-app { background: #2ebd85; color: white; }
+        .btn-rej { background: #f6465d; color: white; }
+        #login-overlay { position: fixed; inset: 0; background: #0b0e11; display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 100; }
+    </style>
+</head>
+<body>
+
+    <div id="login-overlay">
+        <h2>Admin Access</h2>
+        <input type="password" id="pass" placeholder="Enter Admin Key" style="padding:10px; margin:10px;">
+        <button onclick="checkPass()" class="btn-app">Login</button>
+    </div>
+
+    <div class="header">
+        <h1>Pending Deposits</h1>
+        <span id="status">Syncing...</span>
+    </div>
+
+    <div id="request-list">
+        </div>
+
+    <script>
+        const FIREBASE_URL = "https://oldyonline-default-rtdb.firebaseio.com/";
+        firebase.initializeApp({ databaseURL: FIREBASE_URL });
+        const db = firebase.database();
+
+        function checkPass() {
+            if(document.getElementById('pass').value === "Oldy777") { // Set your password here
+                document.getElementById('login-overlay').style.display = 'none';
+            } else { alert("Wrong Key!"); }
+        }
+
+        // Listen for new requests
+        db.ref('pending_deposits').on('value', snap => {
+            const list = document.getElementById('request-list');
+            list.innerHTML = "";
+            document.getElementById('status').innerText = snap.exists() ? "New Requests" : "Clear";
+            
+            snap.forEach(child => {
+                const req = child.val();
+                const key = child.key;
+                list.innerHTML += `
+                    <div class="card">
+                        <div>
+                            <div class="user-info">👤 ${req.user}</div>
+                            <div class="amt">💰 ${req.amount} USDT</div>
+                        </div>
+                        <div class="btn-group">
+                            <button class="btn-app" onclick="approve('${key}', '${req.user}', ${req.amount})">Approve</button>
+                            <button class="btn-rej" onclick="reject('${key}', '${req.user}')">Reject</button>
+                        </div>
+                    </div>
+                `;
+            });
+        });
+
+        async function approve(key, user, amt) {
+            // 1. Get current balance
+            const snap = await db.ref(`users/${user}/balance`).get();
+            const current = snap.val() || 0;
+            
+            // 2. Update Balance
+            await db.ref(`users/${user}/balance`).set(current + amt);
+            
+            // 3. Notify User in Mailbox
+            await db.ref(`users/${user}/mailbox`).push({
+                text: `✅ Your deposit of ${amt} USDT was approved!`,
+                time: new Date().toLocaleTimeString()
+            });
+
+            // 4. Remove from pending
+            db.ref(`pending_deposits/${key}`).remove();
+        }
+
+        function reject(key, user) {
+            db.ref(`pending_deposits/${key}`).remove();
+            db.ref(`users/${user}/mailbox`).push({
+                text: `❌ Your deposit was rejected by admin.`,
+                time: new Date().toLocaleTimeString()
+            });
+        }
+    </script>
+</body>
+</html>
+
