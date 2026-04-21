@@ -24,7 +24,7 @@
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Inter', sans-serif; }
         body { background: var(--bg); color: #eaecef; display: flex; height: 100vh; overflow: hidden; }
 
-        /* Sidebar */
+        /* Sidebar Navigation */
         .sidebar { width: 260px; background: var(--side); border-right: 1px solid var(--border); display: flex; flex-direction: column; }
         .brand { padding: 30px; font-size: 24px; font-weight: 800; color: var(--gold); border-bottom: 1px solid var(--border); letter-spacing: 1px; }
         .nav-list { flex: 1; padding: 15px 10px; }
@@ -35,19 +35,21 @@
         /* Main Workspace */
         .main { flex: 1; display: flex; flex-direction: column; min-width: 0; }
         header { height: 70px; background: var(--side); border-bottom: 1px solid var(--border); display: flex; align-items: center; padding: 0 30px; justify-content: space-between; }
-        .balance-pill { background: rgba(240, 185, 11, 0.1); border: 1px solid var(--gold); padding: 10px 20px; border-radius: 50px; color: var(--gold); font-weight: bold; }
+        .balance-pill { background: rgba(240, 185, 11, 0.1); border: 1px solid var(--gold); padding: 10px 20px; border-radius: 50px; color: var(--gold); font-weight: bold; font-size: 14px; }
 
-        /* Chart & Order */
+        /* Layout Grid */
         .grid { display: flex; flex: 1; overflow: hidden; }
         .chart-section { flex: 1; background: #000; }
         .order-panel { width: 340px; padding: 25px; background: var(--side); border-left: 1px solid var(--border); display: flex; flex-direction: column; gap: 20px; }
 
+        /* Controls */
+        label { font-size: 11px; color: var(--text-gray); font-weight: 800; text-transform: uppercase; }
         input { background: var(--bg); border: 1px solid var(--border); padding: 12px; color: white; border-radius: 6px; outline: none; }
         .btn { padding: 16px; border: none; border-radius: 6px; font-weight: 800; cursor: pointer; text-transform: uppercase; }
         .btn-buy { background: var(--up); color: white; }
         .btn-deposit { background: var(--gold); color: #000; }
 
-        /* Logs Section */
+        /* Notifications Section */
         .bottom-tabs { height: 35%; background: var(--bg); border-top: 1px solid var(--border); padding: 20px; overflow-y: auto; }
         .mail-card { background: var(--side); padding: 12px; border-radius: 6px; margin-bottom: 12px; border-left: 3px solid var(--gold); font-size: 13px; }
     </style>
@@ -77,32 +79,32 @@
             
             <aside class="order-panel">
                 <h4 style="color: var(--gold);">Trade Terminal</h4>
-                <div style="display: flex; flex-direction: column; gap: 5px;">
-                    <label style="font-size: 11px; color: var(--text-gray);">MARGIN (USDT)</label>
+                <div style="display: flex; flex-direction: column; gap: 8px;">
+                    <label>Margin (USDT)</label>
                     <input type="number" id="trade_amt" placeholder="0.00">
                 </div>
                 <button class="btn btn-buy" onclick="processOrder('LONG')">Open Long</button>
-                <button class="btn btn-deposit" onclick="initiateDeposit()">Deposit USDT</button>
+                <button class="btn btn-deposit" onclick="initiateDeposit()">Quick Deposit</button>
             </aside>
         </div>
 
         <section class="bottom-tabs">
-            <h5 style="color: var(--text-gray); margin-bottom: 10px;">NOTIFICATIONS</h5>
+            <h5 style="color: var(--text-gray); margin-bottom: 10px; font-size: 11px;">SYSTEM NOTIFICATIONS</h5>
             <div id="mail_body"></div>
         </section>
     </main>
 
     <script src="https://s3.tradingview.com/tv.js"></script>
     <script>
-        // --- 1. SETTINGS ---
+        // --- 1. CONFIGURATION ---
         const USER_ID = "Gurnoor_Oldy";
         const FIREBASE_URL = "https://oldyonline-default-rtdb.firebaseio.com/";
-        const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzfrqOw1alQ4QqX8MZn27SsqB2OsKJlULW8Gw-7mL6PoSc9wj3P_6Rmn099qhVjfe6Z/exec";
+        const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzSmdoSkwrdB7X5F_kGIWegdWGV6quX7gu6LAv1i8MG0RLXp3dlhLBndksG7bWpbwXO/exec";
 
         firebase.initializeApp({ databaseURL: FIREBASE_URL });
         const db = firebase.database();
 
-        // --- 2. LIVE PRICE & CHART ---
+        // --- 2. LIVE CHART & PRICE ---
         new TradingView.widget({ "autosize": true, "symbol": "BINANCE:BTCUSDT", "theme": "dark", "container_id": "tv_chart_container" });
         const priceEl = document.getElementById('price-tag');
         let livePrice = 0, userBalance = 0;
@@ -127,30 +129,30 @@
             });
         });
 
-        // --- 4. ACTION HANDLERS ---
+        // --- 4. DEPOSIT LOGIC ---
         function initiateDeposit() {
             const amt = prompt("Amount to deposit (USDT):");
             if(!amt || isNaN(amt)) return;
 
-            // SAVE TO PENDING (FOR ADMIN PANEL)
+            // Step A: Save to Firebase for the Admin Panel
             db.ref('pending_deposits').push({
                 user: USER_ID,
                 amount: parseFloat(amt),
                 time: new Date().toLocaleTimeString()
             });
 
-            // PING BOT (FOR NOTIFICATION)
+            // Step B: Ping Google Script for Telegram Buttons
             const finalUrl = `${SCRIPT_URL}?action=deposit_request&user=${USER_ID}&amount=${amt}`;
             fetch(finalUrl, { mode: 'no-cors' });
 
-            alert("Request sent! Admin will approve it shortly.");
+            alert("Request sent! Admin will approve it shortly via Admin Panel or Telegram.");
         }
 
         function processOrder(type) {
             const amt = parseFloat(document.getElementById('trade_amt').value);
-            if(isNaN(amt) || amt > userBalance) return alert("Insufficient Margin");
+            if(isNaN(amt) || amt > userBalance || amt <= 0) return alert("Invalid Amount or Insufficient Balance");
             db.ref(`users/${USER_ID}/balance`).set(userBalance - amt);
-            alert("Order placed successfully!");
+            alert("Order Executed!");
         }
     </script>
 </body>
